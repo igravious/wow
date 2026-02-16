@@ -31,9 +31,30 @@ All four sub-phases done, cross-reviewed (Claude did 0a/0b, Kimi did 0c/0d, both
 5. **Compact Index**: Primary API for dependency resolution. Fallback to `/api/v1/versions/{name}.json`.
 6. **YAML metadata parsing**: Use Cosmopolitan's libyaml. Ignore `!ruby/object:*` tags — treat as plain maps.
 
-## Phase 1: Skeleton — NOT STARTED
+## Phase 1: Skeleton + Build System — COMPLETE
 
-Next up. See `docs/plan/PLAN_PHASE1.md`.
+| Sub-phase | What | Status |
+|-----------|------|--------|
+| **1a** | Hello world with cosmocc | Done |
+| **1b** | Subcommand dispatch (8 commands + `--help`/`--version`) | Done |
+| **1c** | `wow init` — creates Gemfile + .ruby-version | Done |
+
+### Files added
+
+| File | Purpose |
+|------|---------|
+| `Makefile` | Build system using cosmocc (`COSMO` overridable via `?=`) |
+| `src/main.c` | CLI entry point, dispatch table, stubs for unimplemented commands |
+| `src/init.c` | `wow init [dir] [--force]` — writes Gemfile and .ruby-version |
+| `src/version.c` | Fetches latest stable CRuby version from ruby-builder GitHub releases |
+| `include/wow/init.h` | cmd_init() declaration |
+| `include/wow/version.h` | wow_latest_ruby_version() declaration |
+
+### Key decisions made during Phase 1
+
+1. **Ruby version in .ruby-version**: Fetched at runtime from ruby-builder GitHub API via curl, not hardcoded. Falls back to `4.0.1` if fetch fails.
+2. **Build flags**: `-Wall -Wextra -Werror -O2 -std=c11` — matches Phase 0 demos.
+3. **cosmocc path**: Configurable via `COSMO` env var / make override (`?=` default).
 
 ## Phases 2–8: NOT STARTED
 
@@ -42,6 +63,7 @@ See `docs/plan/PLAN_PHASE{2..8}.md`.
 ## Git log
 
 ```
+4c5c76c Add Phase 0 progress checkpoint
 030baf5 Phase 0: research docs + working CosmoCC demos
 3c005df Initial commit: .gitignore and project plan docs
 ```
