@@ -3,6 +3,7 @@ build/
 *.o
 *.com
 *.com.dbg
+*.aarch64.elf
 
 # Vendored gems (installed per-project)
 vendor/
