@@ -1,0 +1,40 @@
+# Build output
+build/
+*.o
+*.com
+*.com.dbg
+
+# Vendored gems (installed per-project)
+vendor/
+.bundle/
+
+# Managed Ruby tooling
+.ruby-lsp/
+
+# AI agent working dirs
+.claude/
+.kimi/
+.agent-relay-ftw-agents
+tmp/
+
+# Scratch scripts
+gem_matrix.sh
+sanity_check.sh
+update_agent.sh
+uv_docker.sh
+hello.rb
+
+# Existing Ruby project files (wow will generate its own)
+Gemfile
+Gemfile.lock
+.ruby-version
+Wow
+
+# README (will be rewritten for wow proper)
+README.md
+
+# Editor / OS
+*~
+*.swp
+*.swo
+.DS_Store
