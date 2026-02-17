@@ -1,4 +1,4 @@
-# Phase 2: HTTPS Client
+# Phase 2: HTTPS Client — COMPLETE
 
 > Talk to rubygems.org over HTTPS and parse JSON responses.
 

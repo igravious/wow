@@ -1,4 +1,4 @@
-# Phase 0: Research
+# Phase 0: Research — COMPLETE
 
 > No code. Understand the formats and APIs we need to implement.
 

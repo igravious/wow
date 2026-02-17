@@ -1,89 +1,77 @@
-# Phase 3: Ruby Manager
+# Phase 3: Ruby Manager + Parallel Downloads — COMPLETE
 
 > Download, install, and activate Ruby — the rbenv + ruby-build replacement.
+> Phase 7 (parallel downloads) was pulled forward and merged here.
 
-## 3a: Download Pre-Built Ruby
+## Status: COMPLETE
 
-**Demo:** `./wow.com ruby install 4.0` downloads Ruby to `~/.local/share/wow/ruby/`.
+All sub-phases implemented and tested.
 
-**Files:**
-- `src/ruby_mgr.c`
-- `include/wow/ruby_mgr.h`
+## Source files
 
-**Implementation:**
-- Determine download URL from version + platform (researched in Phase 0d)
-- Download with progress bar (reuse http.c)
-- Verify SHA-256 hash
-- Extract tarball to `~/.local/share/wow/ruby/ruby-{version}-{platform}/`
-- Stage in `.temp/` first, atomic rename on completion
-- Write `.lock` file for concurrent access safety
+| File | Role |
+|------|------|
+| `src/rubies/resolve.c` | Platform detection, version resolution, .ruby-version walk-up, directory helpers |
+| `src/rubies/install.c` | Download, tar.gz extraction, atomic rename, file locking |
+| `src/rubies/install_many.c` | Parallel multi-version install via bounded-concurrency worker pool |
+| `src/rubies/uninstall.c` | Remove an installed Ruby version |
+| `src/rubies/list.c` | List installed Ruby versions, mark active |
+| `src/rubies/cmd.c` | `wow ruby` subcommand dispatch |
+| `src/rubies/shims.c` | Create symlink shims for ruby, irb, gem, etc. |
+| `src/rubies/internal.c` | Shared internal helpers (mkdirs, colour, timing) |
+| `src/tar.c` | Streaming tar.gz extraction with security hardening |
+| `src/download/multibar.c` | uv-style multi-bar progress display |
+| `src/download/parallel.c` | Bounded-concurrency worker pool (default 50) |
+| `src/download/progress.c` | Single-download progress bar |
 
-**Verify:**
-```bash
-./build/wow.com ruby install 4.0
-ls ~/.local/share/wow/ruby/
-# ruby-4.0.1-linux-x86_64/
-```
+Headers: `include/wow/rubies/`, `include/wow/download/`, `include/wow/tar.h`
+Umbrella headers: `include/wow/rubies.h`, `include/wow/download.h`
 
-## 3b: Minor-Version Symlink
+## 3a: Download Pre-Built Ruby — DONE
 
-**Demo:** `ruby-4.0` symlink points to `ruby-4.0.1`.
+`./wow.com ruby install 3.3.6` downloads Ruby to `~/.local/share/wow/ruby/`.
 
-**Implementation:**
-- After install, create symlink: `ruby-4.0-{platform}` → `ruby-4.0.1-{platform}`
-- On upgrade (4.0.1 → 4.0.2), update the symlink atomically
-- `.ruby-version` contains `4.0` (minor), symlink resolves to patch
+- Determines download URL from version + platform (ruby-builder GitHub releases)
+- Downloads with progress bar (streaming to fd, reuses `src/http/client.c`)
+- Extracts tarball via `src/tar.c` with `strip_components=1` (strips `x64/` prefix)
+- Stages in `.temp/` first, atomic rename on completion
+- File locking via `flock()` on `.lock` for concurrent access safety
 
-**Verify:**
-```bash
-ls -la ~/.local/share/wow/ruby/
-# ruby-4.0-linux-x86_64 -> ruby-4.0.1-linux-x86_64/
-```
+## 3b: Minor-Version Symlink — DONE
 
-## 3c: wow ruby list
+`ruby-3.3` symlink points to `ruby-3.3.6-{platform}`.
 
-**Demo:** `./wow.com ruby list` shows all managed Ruby installations.
+## 3c: wow ruby list — DONE
 
-**Implementation:**
-- Scan `~/.local/share/wow/ruby/` for directories matching `ruby-*`
-- Print version, platform, path
-- Mark active version (from nearest `.ruby-version`)
+`./wow.com ruby list` scans `~/.local/share/wow/ruby/` and prints installed versions, marking the active one from nearest `.ruby-version`.
 
-**Verify:**
-```bash
-./build/wow.com ruby list
-# ruby-4.0.1-linux-x86_64  (active)
-```
+## 3d: wow init Downloads Ruby Eagerly — DONE
 
-## 3d: wow init Downloads Ruby Eagerly
+`./wow.com init` now calls `wow_ruby_ensure(version)` after writing Gemfile + .ruby-version.
 
-**Demo:** `./wow.com init greg` now downloads Ruby before returning.
+## 3e: Shims — DONE
 
-**Changes to init.c:**
-- After writing Gemfile + .ruby-version, call `ruby_mgr_ensure(version)`
-- If Ruby is already installed → skip (fast path)
-- If not → download + install (with progress bar)
-- Print uv-style output: `ruby-4.0.1-linux-x86_64 (download)  2.3 MiB/45.2 MiB`
+Shims are symlinks to wow.com in `~/.local/share/wow/shims/`. argv[0] dispatch in `src/main.c` detects when invoked as `ruby`, `irb`, etc., reads `.ruby-version` (walking up directory tree), and exec's the managed Ruby binary.
 
-## 3e: Shims
+## 3f: Parallel Downloads (merged from Phase 7) — DONE
 
-**Demo:** `cd greg && ruby --version` → uses wow-managed Ruby.
+Bounded-concurrency worker pool with `min(n, max_concurrent)` threads pulling from a mutex-protected queue. Default concurrency of 50 matches uv's semaphore pattern.
 
-**Implementation:**
-- `wow ruby install` creates shims in `~/.local/share/wow/shims/`
-- Shims: `ruby`, `irb`, `gem`, `bundle`, `rake`, `rdoc`, `ri`, `erb`
-- Each shim is a **symlink to wow.com** with argv[0] dispatch (Kimi review: preferred over tiny shell scripts — one binary, clean, same approach uv uses)
-- Shim reads `.ruby-version` (walk up directory tree, like rbenv)
-- **Symlink gotcha:** if project is reached via a symlink, wow walks the symlink's directory, not its target. Document this behaviour.
-- Dispatches to the correct Ruby in `~/.local/share/wow/ruby/`
-- User adds `~/.local/share/wow/shims` to PATH (once, in .bashrc)
+uv-style multi-bar progress display with:
+- Sorted bars (by completion percentage)
+- Dynamic column widths (name padded to max, `%7s/%-7s` byte counters)
+- Braille spinner on status line
+- Throughput indicator
+- `--slow-mo` rate limiting for demos
 
-**Verify:**
-```bash
-export PATH="$HOME/.local/share/wow/shims:$PATH"
-cd greg
-ruby --version    # → ruby 4.0.1
-which ruby        # → ~/.local/share/wow/shims/ruby
-cd /tmp
-ruby --version    # → system ruby (or "no .ruby-version found")
-```
+Two modes:
+- **Fixed mode** (n_bars == n_total): one row per download, good for 2-8 files
+- **Worker mode** (n_bars < n_total): one row per worker thread + status line, good for 100+ files
+
+### Demo
+
+`demos/phase3/demo_parallel.c` — downloads multiple files in parallel with multibar progress. Supports `--slow-mo` flag and worker mode for large batches.
+
+### Tests
+
+`tests/ruby_mgr_test.c` — platform detection, directory helpers, .ruby-version resolution, tar security (path traversal, symlink escape, corruption).

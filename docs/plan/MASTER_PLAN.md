@@ -147,44 +147,62 @@ This mirrors uv: uv parses TOML, not arbitrary Python.
 
 Every micro-phase has a working demo. See PLAN_PHASEn.md for details.
 
-| Phase | Name | Micros | Key Demo |
-|-------|------|--------|----------|
-| 0 | Research | 0a–0d | Documented formats + APIs |
-| 1 | Skeleton | 1a–1c | `./wow.com init greg` creates project |
-| 2 | HTTPS | 2a–2c | Fetch gem info from rubygems.org |
-| 3 | Ruby Manager | 3a–3e | Download Ruby, shims (argv[0] dispatch), `cd` activates |
-| 4 | .gem Unpack | 4a–4d | Download + unpack sinatra to vendor/ |
-| 5 | Gemfile Parser | 5a–5c | re2c + lemon parse a real Gemfile |
-| 6 | PubGrub | 6a–6d | Resolve sinatra deps, generate Gemfile.lock |
-| 7 | Parallel DL | 7a–7c | N gems downloaded in parallel, timing comparison |
-| 8 | End-to-End | 8a–8c | Full `wow sync` with uv-style output |
+| Phase | Name | Micros | Key Demo | Status |
+|-------|------|--------|----------|--------|
+| 0 | Research | 0a–0d | Documented formats + APIs | Done |
+| 1 | Skeleton | 1a–1c | `./wow.com init greg` creates project | Done |
+| 2 | HTTPS | 2a–2c | Fetch gem info from rubygems.org | Done |
+| 3 | Ruby Manager | 3a–3e + 7 | Download Ruby, shims, parallel downloads | Done |
+| 4 | .gem Unpack | 4a–4d | Download + unpack sinatra to vendor/ | Next |
+| 5 | Gemfile Parser | 5a–5c | re2c + lemon parse a real Gemfile | |
+| 6 | PubGrub | 6a–6d | Resolve sinatra deps, generate Gemfile.lock | |
+| 8 | End-to-End | 8a–8c | Full `wow sync` with uv-style output | |
+
+Phase 7 (parallel downloads) was merged into Phase 3.
 
 ## Source Layout
 
 ```
 Code/wow/
 ├── src/
-│   ├── main.c              # CLI, subcommand dispatch
+│   ├── main.c              # CLI entry point, subcommand dispatch, shim argv[0]
 │   ├── init.c              # wow init (Gemfile + .ruby-version + Ruby download)
-│   ├── sync.c              # wow sync orchestrator
-│   ├── ruby_mgr.c          # Ruby download, install, discovery, shims
-│   ├── gemfile.l.re2c      # re2c lexer
-│   ├── gemfile.y           # lemon grammar
-│   ├── gemfile.c           # glue: lexer + parser → dependency list
-│   ├── lockfile.c          # Gemfile.lock parser + writer
-│   ├── registry.c          # rubygems.org API client
-│   ├── http.c              # HTTPS (mbedTLS, connection pooling)
-│   ├── pool.c              # parallel download pool (pthreads)
-│   ├── gem.c               # .gem download + unpack
-│   ├── tar.c               # ustar tar reader
-│   ├── pubgrub.c           # PubGrub dependency resolver
-│   └── version.c           # gem version parsing + constraint matching
-├── include/wow/
+│   ├── registry.c          # rubygems.org API client (cJSON)
+│   ├── version.c           # Latest CRuby version from GitHub releases
+│   ├── tar.c               # Streaming tar.gz extraction (security-hardened)
+│   ├── http/
+│   │   ├── client.c        # HTTPS GET (mbedTLS, redirects, streaming download)
+│   │   ├── pool.c          # Connection pool (Keep-Alive, MSG_PEEK, LRU)
+│   │   └── entropy.c       # mbedTLS entropy shim (getentropy(2))
+│   ├── download/
+│   │   ├── multibar.c      # uv-style multi-bar progress display
+│   │   ├── parallel.c      # Bounded-concurrency worker pool
+│   │   └── progress.c      # Single-download progress bar
+│   ├── rubies/
+│   │   ├── cmd.c           # wow ruby subcommand dispatch
+│   │   ├── resolve.c       # Platform detection, version resolution
+│   │   ├── install.c       # Download + extract + atomic rename
+│   │   ├── install_many.c  # Parallel multi-version install
+│   │   ├── uninstall.c     # Remove installed Ruby
+│   │   ├── list.c          # List installed Rubies
+│   │   ├── shims.c         # Create symlink shims (ruby, irb, gem, ...)
+│   │   └── internal.c      # Shared helpers (mkdirs, colour, timing)
+│   ├── sync.c              # wow sync orchestrator (Phase 8)
+│   ├── gemfile.l.re2c      # re2c lexer (Phase 5)
+│   ├── gemfile.y           # lemon grammar (Phase 5)
+│   ├── gem.c               # .gem download + unpack (Phase 4)
+│   └── pubgrub.c           # PubGrub dependency resolver (Phase 6)
+├── include/wow/             # Public headers (mirror src/ layout)
+│   ├── http.h, download.h, rubies.h  # Umbrella convenience headers
+│   ├── http/, download/, rubies/      # Per-module headers
+│   └── tar.h, registry.h, etc.
 ├── vendor/cjson/
+├── demos/                   # Per-phase demos (phase0/, phase2/, phase3/)
+├── tests/                   # Test binaries + fixtures
 ├── docs/plan/
 ├── Makefile
 └── build/
-    └── wow.com             # the Actually Portable Executable
+    └── wow.com              # the Actually Portable Executable
 ```
 
 ## Post-MVP Roadmap

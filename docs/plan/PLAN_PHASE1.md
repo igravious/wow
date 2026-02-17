@@ -1,4 +1,4 @@
-# Phase 1: Skeleton + Build System
+# Phase 1: Skeleton + Build System — COMPLETE
 
 > Get a Cosmopolitan C binary building and dispatching subcommands.
 

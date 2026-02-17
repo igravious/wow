@@ -1,4 +1,8 @@
-# Phase 7: Parallel Downloads
+# Phase 7: Parallel Downloads — MERGED INTO PHASE 3
+
+> **This phase was pulled forward and implemented as part of Phase 3.**
+> See `PLAN_PHASE3.md` for the actual implementation.
+> The original plan below is preserved for reference.
 
 > The thing that sold us on uv. Multiple gems downloading simultaneously with connection pooling.
 
