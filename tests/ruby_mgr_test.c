@@ -134,8 +134,8 @@ static int make_tar_gz_symlink(const char *gz_path, const char *entry_name,
 
 /* Simple cleanup helper for temp directories */
 static void rm_rf(const char *path) {
-    char cmd[PATH_MAX + 16];
-    snprintf(cmd, sizeof(cmd), "rm -rf '%s'", path);
+    char cmd[PATH_MAX + 32];
+    snprintf(cmd, sizeof(cmd), "/bin/rm -rf '%s'", path);
     (void)system(cmd);
 }
 

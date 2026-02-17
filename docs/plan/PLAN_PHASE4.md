@@ -1,94 +1,118 @@
-# Phase 4: .gem Download + Unpack
+# Phase 4: .gem Download + Unpack — COMPLETE
 
-> Download a gem from rubygems.org and unpack it into vendor/bundle/.
+> Download a gem from rubygems.org, inspect its contents, parse gemspec metadata, and unpack to a directory.
+
+## Status: Done
+
+All four sub-phases implemented and tested.
 
 ## 4a: Download a .gem File
 
-**Demo:** `./wow.com gem-download sinatra 4.1.1` saves sinatra-4.1.1.gem to disk.
+**Command:** `wow gem-download sinatra 4.1.1`
 
 **Files:**
-- `src/gem.c`
-- `include/wow/gem.h`
+- `src/gems/download.c` — download + SHA-256 verify + atomic rename
+- `include/wow/gems/download.h`
 
 **Implementation:**
-- URL: `https://rubygems.org/downloads/{name}-{version}.gem`
-- Download to `~/.cache/wow/gems/{name}-{version}.gem` (global cache)
-- Verify SHA-256 against registry metadata
-- Progress bar for large gems
+- Fetch registry metadata via `wow_gem_info_fetch()` (URL + SHA-256)
+- Check global cache (`$XDG_CACHE_HOME/wow/gems/` or `~/.cache/wow/gems/`)
+- Download with progress bar to temp file
+- Verify SHA-256 (only when requesting the latest version — the registry API only returns the latest version's hash)
+- Atomic rename to final cache path
+- `goto cleanup` on all error paths (unlinks partial downloads)
 
-**Verify:**
-```bash
-./build/wow.com gem-download sinatra 4.1.1
-ls ~/.cache/wow/gems/
-# sinatra-4.1.1.gem
-file ~/.cache/wow/gems/sinatra-4.1.1.gem
-# POSIX tar archive
-```
+## 4b: List .gem Contents
 
-## 4b: Read Tar Headers
-
-**Demo:** `./wow.com gem-list sinatra-4.1.1.gem` lists the .gem contents.
+**Command:** `wow gem-list ~/.cache/wow/gems/sinatra-4.1.1.gem`
 
 **Files:**
-- `src/tar.c`
-- `include/wow/tar.h`
+- `src/gems/list.c` — tar entry listing with formatted sizes
+- `include/wow/gems/list.h`
 
 **Implementation:**
-- Read 512-byte tar headers (ustar format)
-- Parse: filename, size, type flag
-- Iterate through entries, print each filename + size
-- Handle end-of-archive (two consecutive zero blocks)
+- Uses `wow_tar_list()` with callback to iterate plain tar entries
+- Formats sizes as B/KiB/MiB
+- Validates: a .gem contains `metadata.gz`, `data.tar.gz`, `checksums.yaml.gz`
 
-**Verify:**
-```bash
-./build/wow.com gem-list ~/.cache/wow/gems/sinatra-4.1.1.gem
-# metadata.gz     (4.2 KB)
-# data.tar.gz     (52.1 KB)
-# checksums.yaml.gz (0.3 KB)
-```
+## 4c: Parse Gemspec Metadata
 
-## 4c: Extract + Parse Gemspec YAML
+**Command:** `wow gem-meta ~/.cache/wow/gems/sinatra-4.1.1.gem`
 
-**Demo:** `./wow.com gem-meta sinatra-4.1.1.gem` prints parsed gemspec metadata.
+**Files:**
+- `src/gems/meta.c` — extract metadata.gz, gunzip, parse YAML
+- `include/wow/gems/meta.h` — `struct wow_gemspec`, `struct wow_gem_dep_info`
 
 **Implementation:**
-- Extract `metadata.gz` from outer tar (tar.c)
-- Decompress with zlib (cosmo provides)
-- Parse YAML with libyaml (cosmo provides)
-- Extract: name, version, summary, authors, dependencies (name + version constraint), required_ruby_version
+- `wow_tar_read_entry()` extracts `metadata.gz` from outer tar (1 MiB limit)
+- `gunzip_mem()` decompresses with zlib (`inflateInit2` with `16+MAX_WBITS`)
+- libyaml document API parses the YAML gemspec
+- Handles Ruby-specific YAML tags (`!ruby/object:Gem::Specification`, `Gem::Version`, `Gem::Requirement`) — libyaml processes them transparently
+- Extracts: name, version, summary, authors, required_ruby_version, runtime dependencies (skips development deps)
+- `Gem::Requirement` parsing: handles `[operator, version]` pairs, skips `>= 0` (means "any")
 
-**Verify:**
-```bash
-./build/wow.com gem-meta ~/.cache/wow/gems/sinatra-4.1.1.gem
-# name: sinatra
-# version: 4.1.1
-# summary: Classy web-development dressed in a DSL
-# dependencies:
-#   mustermann (~> 3.0)
-#   rack (>= 3.0.0, < 4)
-#   rack-session (>= 2.0.0, < 3)
-#   tilt (~> 2.0)
-```
+## 4d: Unpack Gem to Directory
 
-## 4d: Extract Data to vendor/bundle/
+**Command:** `wow gem-unpack ~/.cache/wow/gems/sinatra-4.1.1.gem /tmp/sinatra/`
 
-**Demo:** `./wow.com gem-unpack sinatra-4.1.1.gem vendor/bundle/` unpacks gem files.
+**Files:**
+- `src/gems/unpack.c` — stream data.tar.gz to temp, extract gzip tar
+- `include/wow/gems/unpack.h`
 
 **Implementation:**
-- Extract `data.tar.gz` from outer tar
-- Decompress with zlib
-- Untar inner archive to `vendor/bundle/ruby/{version}/gems/{name}-{version}/`
-- Directory layout matches Bundler convention:
-  ```
-  vendor/bundle/ruby/4.0.0/gems/sinatra-4.1.1/
-  ├── lib/
-  ├── README.md
-  └── ...
-  ```
+- Streams `data.tar.gz` from outer tar to temp file via `wow_tar_extract_entry_to_fd()` (no large malloc)
+- Temp file in `$TMPDIR` (falls back to `/tmp`) — not in dest dir
+- Extracts gzip tar via existing `wow_tar_extract_gz()`
+- `goto cleanup` unlinks temp file on all paths (success or error)
 
-**Verify:**
-```bash
-./build/wow.com gem-unpack ~/.cache/wow/gems/sinatra-4.1.1.gem vendor/bundle/
-ls vendor/bundle/ruby/4.0.0/gems/sinatra-4.1.1/lib/
-# sinatra.rb  sinatra/
+## Infrastructure: tar.c Refactoring
+
+**Files:**
+- `src/tar.c` — added plain (uncompressed) tar support
+- `include/wow/tar.h` — new public APIs
+
+**Key changes:**
+- `struct tar_reader` gains `compressed` flag
+- `tar_reader_init_plain()` (no zlib) alongside existing `tar_reader_init_gz()`
+- `tar_reader_read/skip/close` branch on `compressed`
+- Extracted `tar_extract_loop()` shared function
+- New APIs: `wow_tar_extract()`, `wow_tar_list()`, `wow_tar_read_entry()`, `wow_tar_extract_entry_to_fd()`
+
+## Infrastructure: libyaml Integration
+
+**Files:**
+- `Makefile` — compiles 8 libyaml source files from cosmo source tree into `build/libyaml.a`
+
+**Build flags:**
 ```
+-I$(COSMO_SRC)/third_party/libyaml -DYAML_DECLARE_STATIC
+-include $(COSMO_SRC)/third_party/libyaml/config.h -Wno-unused-value
+```
+
+## Source Layout
+
+```
+src/gems/
+    cmd.c           — CLI dispatch (gem-download, gem-list, gem-meta, gem-unpack)
+    download.c      — Download .gem to cache + SHA-256 verify
+    list.c          — List .gem tar entries
+    meta.c          — Parse metadata.gz gemspec YAML (libyaml)
+    unpack.c        — Extract data.tar.gz to dest dir
+
+include/wow/gems/
+    download.h, list.h, meta.h, unpack.h
+
+include/wow/gems.h  — umbrella header
+```
+
+## Tests
+
+`tests/gem_test.c` — all offline with embedded fixtures:
+- Plain tar extraction (multi-file)
+- `tar_list` callback iteration
+- `tar_read_entry` with max_size guard
+- `tar_extract_entry_to_fd` streaming
+- SHA-256 against known digest
+- Gzip compress/decompress round-trip
+- Gemspec YAML parsing (fake .gem with embedded YAML)
+- Cache directory path

@@ -10,6 +10,7 @@
 #include "wow/init.h"
 #include "wow/registry.h"
 #include "wow/rubies.h"
+#include "wow/gems.h"
 
 /* External verbose flag from http.c */
 extern int wow_http_debug;
@@ -130,6 +131,10 @@ static const struct {
     { "fetch",    "Fetch a URL (debug)",           cmd_fetch },
     { "gem-info",    "Show gem info from rubygems",   cmd_gem_info },
     { "bench-pool",  "Benchmark pool vs no-pool",    cmd_bench_pool },
+    { "gem-download", "Download a .gem file",          cmd_gem_download },
+    { "gem-list",    "List .gem contents",           cmd_gem_list },
+    { "gem-meta",    "Show .gem metadata",           cmd_gem_meta },
+    { "gem-unpack",  "Unpack .gem to directory",     cmd_gem_unpack },
 };
 
 #define N_COMMANDS (sizeof(commands) / sizeof(commands[0]))

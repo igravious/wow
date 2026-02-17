@@ -1,9 +1,10 @@
 /*
- * tar.c — streaming tar+gzip extraction
+ * tar.c — streaming tar extraction (gzip-compressed and plain)
  *
- * Reads a .tar.gz file from disc, decompresses with zlib, and extracts
- * entries to a destination directory.  Reusable across Phase 3 (Ruby
- * download) and Phase 4 (.gem unpack).
+ * Reads tar archives from disc and extracts entries to a destination
+ * directory.  Supports both .tar.gz (gzip-compressed) and plain .tar
+ * (uncompressed) archives.  Reusable across Phase 3 (Ruby download)
+ * and Phase 4 (.gem unpack).
  *
  * Reference: demos/phase0/demo_tar.c (Phase 0a proof-of-concept).
  */
@@ -51,16 +52,17 @@ typedef struct {
 
 _Static_assert(sizeof(tar_header_t) == 512, "tar header must be 512 bytes");
 
-/* ── Streaming gzip+tar reader ───────────────────────────────────── */
+/* ── Streaming tar reader (gzip or plain) ────────────────────────── */
 
 struct tar_reader {
     z_stream   zstrm;
     FILE      *input;
-    uint8_t    zbuf[ZBUF_SIZE];     /* compressed input */
-    uint8_t    tbuf[TBUF_SIZE];     /* decompressed tar data */
+    uint8_t    zbuf[ZBUF_SIZE];     /* compressed input (gzip only) */
+    uint8_t    tbuf[TBUF_SIZE];     /* decompressed tar data (gzip only) */
     size_t     tpos;                /* read position in tbuf */
     size_t     tlen;                /* valid bytes in tbuf */
     int        zeof;                /* zlib hit Z_STREAM_END */
+    int        compressed;          /* 1 = gzip, 0 = plain tar */
 };
 
 /* ── Helpers ─────────────────────────────────────────────────────── */
@@ -212,9 +214,10 @@ static int symlink_target_is_safe(const char *target, const char *entry_path)
 
 /* ── tar_reader I/O ──────────────────────────────────────────────── */
 
-static int tar_reader_init(struct tar_reader *r, const char *gz_path)
+static int tar_reader_init_gz(struct tar_reader *r, const char *gz_path)
 {
     memset(r, 0, sizeof(*r));
+    r->compressed = 1;
 
     r->input = fopen(gz_path, "rb");
     if (!r->input) {
@@ -232,18 +235,45 @@ static int tar_reader_init(struct tar_reader *r, const char *gz_path)
     return 0;
 }
 
+static int tar_reader_init_plain(struct tar_reader *r, const char *path)
+{
+    memset(r, 0, sizeof(*r));
+    r->compressed = 0;
+
+    r->input = fopen(path, "rb");
+    if (!r->input) {
+        fprintf(stderr, "wow: cannot open %s: %s\n", path, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
 static void tar_reader_close(struct tar_reader *r)
 {
-    inflateEnd(&r->zstrm);
+    if (r->compressed)
+        inflateEnd(&r->zstrm);
     if (r->input) fclose(r->input);
 }
 
 /*
- * Read exactly n bytes of decompressed tar data.
+ * Read exactly n bytes of tar data.
  * Returns 0 on success, -1 on error/premature EOF.
  */
 static int tar_reader_read(struct tar_reader *r, void *buf, size_t n)
 {
+    /* Plain tar: direct fread */
+    if (!r->compressed) {
+        size_t got = fread(buf, 1, n, r->input);
+        if (got != n) {
+            if (ferror(r->input))
+                fprintf(stderr, "wow: read error on tar\n");
+            return -1;
+        }
+        return 0;
+    }
+
+    /* Gzip-compressed path */
     uint8_t *dst = buf;
     size_t remaining = n;
 
@@ -299,10 +329,20 @@ static int tar_reader_read(struct tar_reader *r, void *buf, size_t n)
 }
 
 /*
- * Skip n bytes of decompressed tar data.
+ * Skip n bytes of tar data.
  */
 static int tar_reader_skip(struct tar_reader *r, size_t n)
 {
+    /* Plain tar: seek forward */
+    if (!r->compressed) {
+        if (fseek(r->input, (long)n, SEEK_CUR) != 0) {
+            fprintf(stderr, "wow: seek error on tar\n");
+            return -1;
+        }
+        return 0;
+    }
+
+    /* Gzip: must decompress to skip */
     while (n > 0) {
         if (r->tpos < r->tlen) {
             size_t avail = r->tlen - r->tpos;
@@ -321,15 +361,26 @@ static int tar_reader_skip(struct tar_reader *r, size_t n)
     return 0;
 }
 
-/* ── Main extraction logic ───────────────────────────────────────── */
+/* ── Build entry name from tar header ────────────────────────────── */
 
-int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
-                       int strip_components)
+static void tar_build_entry_name(char *out, size_t outsz,
+                                 const tar_header_t *hdr,
+                                 const char *long_name, int have_long_name)
 {
-    struct tar_reader reader;
-    if (tar_reader_init(&reader, gz_path) != 0)
-        return -1;
+    if (have_long_name) {
+        snprintf(out, outsz, "%s", long_name);
+    } else if (hdr->prefix[0]) {
+        snprintf(out, outsz, "%.155s/%.100s", hdr->prefix, hdr->name);
+    } else {
+        snprintf(out, outsz, "%.100s", hdr->name);
+    }
+}
 
+/* ── Shared extraction loop ──────────────────────────────────────── */
+
+static int tar_extract_loop(struct tar_reader *reader, const char *dest_dir,
+                            int strip_components)
+{
     int ret = -1;
     int zero_blocks = 0;
     char long_name[PATH_MAX];
@@ -337,7 +388,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
 
     for (;;) {
         tar_header_t hdr;
-        if (tar_reader_read(&reader, &hdr, 512) != 0) {
+        if (tar_reader_read(reader, &hdr, 512) != 0) {
             /* Premature EOF — could be truncated archive */
             if (zero_blocks > 0) {
                 ret = 0;  /* Had at least one zero block, likely just end */
@@ -374,33 +425,26 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
                 fprintf(stderr, "wow: tar: @LongLink too long (%zu)\n", size);
                 break;
             }
-            if (tar_reader_read(&reader, long_name, size) != 0) break;
+            if (tar_reader_read(reader, long_name, size) != 0) break;
             long_name[size] = '\0';
             /* Skip padding to 512-byte boundary */
             size_t pad = blocks * 512 - size;
-            if (pad > 0 && tar_reader_skip(&reader, pad) != 0) break;
+            if (pad > 0 && tar_reader_skip(reader, pad) != 0) break;
             have_long_name = 1;
             continue;
         }
 
         /* Build full entry name */
         char entry_name[PATH_MAX];
-        if (have_long_name) {
-            snprintf(entry_name, sizeof(entry_name), "%s", long_name);
-            have_long_name = 0;
-        } else if (hdr.prefix[0]) {
-            /* ustar prefix + name */
-            snprintf(entry_name, sizeof(entry_name), "%.155s/%.100s",
-                     hdr.prefix, hdr.name);
-        } else {
-            snprintf(entry_name, sizeof(entry_name), "%.100s", hdr.name);
-        }
+        tar_build_entry_name(entry_name, sizeof(entry_name), &hdr,
+                             long_name, have_long_name);
+        have_long_name = 0;
 
         /* Strip leading path components */
         const char *stripped = strip_path(entry_name, strip_components);
         if (!stripped || !*stripped) {
             /* Entry stripped away entirely — skip data */
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
             continue;
         }
@@ -409,7 +453,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
 
         if (!path_is_safe(stripped)) {
             fprintf(stderr, "wow: tar: rejecting unsafe path: %s\n", stripped);
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
             continue;
         }
@@ -417,13 +461,13 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
         /* Reject dangerous entry types */
         if (typeflag == '1') {
             fprintf(stderr, "wow: tar: rejecting hard link: %s\n", stripped);
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
             continue;
         }
         if (typeflag == '3' || typeflag == '4' || typeflag == '6') {
             fprintf(stderr, "wow: tar: rejecting device/FIFO: %s\n", stripped);
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
             continue;
         }
@@ -448,7 +492,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
         if (typeflag == '5') {
             /* Directory */
             if (mkdirs(outpath, 0755) != 0) break;
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
 
         } else if (typeflag == '2') {
@@ -460,7 +504,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
                 fprintf(stderr, "wow: tar: rejecting symlink escape: "
                         "%s -> %s\n", stripped, link_target);
                 if (blocks > 0 &&
-                    tar_reader_skip(&reader, blocks * 512) != 0)
+                    tar_reader_skip(reader, blocks * 512) != 0)
                     break;
                 continue;
             }
@@ -475,7 +519,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
                         outpath, link_target, strerror(errno));
                 break;
             }
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
 
         } else if (typeflag == '0' || typeflag == '\0') {
@@ -500,7 +544,7 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
             while (remaining > 0) {
                 size_t chunk = remaining < sizeof(filebuf)
                              ? remaining : sizeof(filebuf);
-                if (tar_reader_read(&reader, filebuf, chunk) != 0) {
+                if (tar_reader_read(reader, filebuf, chunk) != 0) {
                     fclose(out);
                     goto done;
                 }
@@ -519,16 +563,297 @@ int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
 
             /* Skip tar block padding */
             size_t pad = blocks * 512 - size;
-            if (pad > 0 && tar_reader_skip(&reader, pad) != 0) break;
+            if (pad > 0 && tar_reader_skip(reader, pad) != 0) break;
 
         } else {
             /* Unknown type — skip */
             fprintf(stderr, "wow: tar: skipping unknown type '%c': %s\n",
                     typeflag, stripped);
-            if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            if (blocks > 0 && tar_reader_skip(reader, blocks * 512) != 0)
                 break;
         }
     }
+
+done:
+    return ret;
+}
+
+/* ── Public API: gzip-compressed tar extraction ──────────────────── */
+
+int wow_tar_extract_gz(const char *gz_path, const char *dest_dir,
+                       int strip_components)
+{
+    struct tar_reader reader;
+    if (tar_reader_init_gz(&reader, gz_path) != 0)
+        return -1;
+
+    int ret = tar_extract_loop(&reader, dest_dir, strip_components);
+    tar_reader_close(&reader);
+    return ret;
+}
+
+/* ── Public API: plain (uncompressed) tar extraction ─────────────── */
+
+int wow_tar_extract(const char *tar_path, const char *dest_dir,
+                    int strip_components)
+{
+    struct tar_reader reader;
+    if (tar_reader_init_plain(&reader, tar_path) != 0)
+        return -1;
+
+    int ret = tar_extract_loop(&reader, dest_dir, strip_components);
+    tar_reader_close(&reader);
+    return ret;
+}
+
+/* ── Public API: list entries in an uncompressed tar ─────────────── */
+
+int wow_tar_list(const char *tar_path, wow_tar_list_fn fn, void *ctx)
+{
+    struct tar_reader reader;
+    if (tar_reader_init_plain(&reader, tar_path) != 0)
+        return -1;
+
+    int ret = -1;
+    int zero_blocks = 0;
+    char long_name[PATH_MAX];
+    int have_long_name = 0;
+
+    for (;;) {
+        tar_header_t hdr;
+        if (tar_reader_read(&reader, &hdr, 512) != 0) {
+            if (zero_blocks > 0) {
+                ret = 0;
+                break;
+            }
+            fprintf(stderr, "wow: tar: unexpected end of archive\n");
+            break;
+        }
+
+        if (is_zero_block(&hdr)) {
+            zero_blocks++;
+            if (zero_blocks >= 2) {
+                ret = 0;
+                break;
+            }
+            continue;
+        }
+        zero_blocks = 0;
+
+        if (memcmp(hdr.magic, "ustar", 5) != 0) {
+            fprintf(stderr, "wow: tar: bad magic '%.6s' (not ustar)\n",
+                    hdr.magic);
+            break;
+        }
+
+        size_t size = parse_octal(hdr.size, 12);
+        size_t blocks = (size + 511) / 512;
+        char typeflag = hdr.typeflag ? hdr.typeflag : '0';
+
+        /* GNU @LongLink */
+        if (typeflag == 'L') {
+            if (size >= PATH_MAX) break;
+            if (tar_reader_read(&reader, long_name, size) != 0) break;
+            long_name[size] = '\0';
+            size_t pad = blocks * 512 - size;
+            if (pad > 0 && tar_reader_skip(&reader, pad) != 0) break;
+            have_long_name = 1;
+            continue;
+        }
+
+        char entry_name[PATH_MAX];
+        tar_build_entry_name(entry_name, sizeof(entry_name), &hdr,
+                             long_name, have_long_name);
+        have_long_name = 0;
+
+        /* Call the user callback */
+        if (fn && fn(entry_name, size, typeflag, ctx) != 0) {
+            /* User requested stop — not an error */
+            ret = 0;
+            if (blocks > 0) tar_reader_skip(&reader, blocks * 512);
+            break;
+        }
+
+        /* Skip data blocks */
+        if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            break;
+    }
+
+    tar_reader_close(&reader);
+    return ret;
+}
+
+/* ── Public API: read a single entry to memory ───────────────────── */
+
+int wow_tar_read_entry(const char *tar_path, const char *entry_name,
+                       uint8_t **out_data, size_t *out_len, size_t max_size)
+{
+    struct tar_reader reader;
+    if (tar_reader_init_plain(&reader, tar_path) != 0)
+        return -1;
+
+    *out_data = NULL;
+    *out_len = 0;
+
+    int ret = -1;
+    int zero_blocks = 0;
+    char long_name[PATH_MAX];
+    int have_long_name = 0;
+
+    for (;;) {
+        tar_header_t hdr;
+        if (tar_reader_read(&reader, &hdr, 512) != 0) {
+            if (zero_blocks > 0) break;  /* EOF, entry not found */
+            break;
+        }
+
+        if (is_zero_block(&hdr)) {
+            zero_blocks++;
+            if (zero_blocks >= 2) break;
+            continue;
+        }
+        zero_blocks = 0;
+
+        if (memcmp(hdr.magic, "ustar", 5) != 0) break;
+
+        size_t size = parse_octal(hdr.size, 12);
+        size_t blocks = (size + 511) / 512;
+        char typeflag = hdr.typeflag ? hdr.typeflag : '0';
+
+        /* GNU @LongLink */
+        if (typeflag == 'L') {
+            if (size >= PATH_MAX) break;
+            if (tar_reader_read(&reader, long_name, size) != 0) break;
+            long_name[size] = '\0';
+            size_t pad = blocks * 512 - size;
+            if (pad > 0 && tar_reader_skip(&reader, pad) != 0) break;
+            have_long_name = 1;
+            continue;
+        }
+
+        char name[PATH_MAX];
+        tar_build_entry_name(name, sizeof(name), &hdr,
+                             long_name, have_long_name);
+        have_long_name = 0;
+
+        /* Check if this is the entry we're looking for */
+        if (strcmp(name, entry_name) == 0 &&
+            (typeflag == '0' || typeflag == '\0')) {
+            if (size > max_size) {
+                fprintf(stderr, "wow: tar: entry '%s' too large "
+                        "(%zu > %zu)\n", entry_name, size, max_size);
+                break;
+            }
+
+            uint8_t *buf = malloc(size);
+            if (!buf) {
+                fprintf(stderr, "wow: tar: malloc(%zu) failed\n", size);
+                break;
+            }
+
+            if (tar_reader_read(&reader, buf, size) != 0) {
+                free(buf);
+                break;
+            }
+
+            *out_data = buf;
+            *out_len = size;
+            ret = 0;
+            break;
+        }
+
+        /* Not our entry — skip data */
+        if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            break;
+    }
+
+    if (ret != 0 && *out_data == NULL)
+        fprintf(stderr, "wow: tar: entry '%s' not found\n", entry_name);
+
+    tar_reader_close(&reader);
+    return ret;
+}
+
+/* ── Public API: stream a single entry to a file descriptor ──────── */
+
+int wow_tar_extract_entry_to_fd(const char *tar_path, const char *entry_name,
+                                int fd)
+{
+    struct tar_reader reader;
+    if (tar_reader_init_plain(&reader, tar_path) != 0)
+        return -1;
+
+    int ret = -1;
+    int zero_blocks = 0;
+    char long_name[PATH_MAX];
+    int have_long_name = 0;
+
+    for (;;) {
+        tar_header_t hdr;
+        if (tar_reader_read(&reader, &hdr, 512) != 0) {
+            if (zero_blocks > 0) break;
+            break;
+        }
+
+        if (is_zero_block(&hdr)) {
+            zero_blocks++;
+            if (zero_blocks >= 2) break;
+            continue;
+        }
+        zero_blocks = 0;
+
+        if (memcmp(hdr.magic, "ustar", 5) != 0) break;
+
+        size_t size = parse_octal(hdr.size, 12);
+        size_t blocks = (size + 511) / 512;
+        char typeflag = hdr.typeflag ? hdr.typeflag : '0';
+
+        /* GNU @LongLink */
+        if (typeflag == 'L') {
+            if (size >= PATH_MAX) break;
+            if (tar_reader_read(&reader, long_name, size) != 0) break;
+            long_name[size] = '\0';
+            size_t pad = blocks * 512 - size;
+            if (pad > 0 && tar_reader_skip(&reader, pad) != 0) break;
+            have_long_name = 1;
+            continue;
+        }
+
+        char name[PATH_MAX];
+        tar_build_entry_name(name, sizeof(name), &hdr,
+                             long_name, have_long_name);
+        have_long_name = 0;
+
+        /* Check if this is the entry we're looking for */
+        if (strcmp(name, entry_name) == 0 &&
+            (typeflag == '0' || typeflag == '\0')) {
+            /* Stream to fd in chunks */
+            size_t remaining = size;
+            uint8_t buf[8192];
+            while (remaining > 0) {
+                size_t chunk = remaining < sizeof(buf)
+                             ? remaining : sizeof(buf);
+                if (tar_reader_read(&reader, buf, chunk) != 0)
+                    goto done;
+                ssize_t written = write(fd, buf, chunk);
+                if (written < 0 || (size_t)written != chunk) {
+                    fprintf(stderr, "wow: tar: write to fd failed: %s\n",
+                            strerror(errno));
+                    goto done;
+                }
+                remaining -= chunk;
+            }
+            ret = 0;
+            break;
+        }
+
+        /* Not our entry — skip data */
+        if (blocks > 0 && tar_reader_skip(&reader, blocks * 512) != 0)
+            break;
+    }
+
+    if (ret != 0)
+        fprintf(stderr, "wow: tar: entry '%s' not found\n", entry_name);
 
 done:
     tar_reader_close(&reader);

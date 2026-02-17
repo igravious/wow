@@ -143,6 +143,14 @@ Gemfiles are Ruby code (`instance_eval`). wow does NOT evaluate Ruby. It parses 
 
 This mirrors uv: uv parses TOML, not arbitrary Python.
 
+## Version Roadmap
+
+| Version | Phases | What it means |
+|---------|--------|---------------|
+| **v0.9** | 4, 5, 6 | **Consumer Ready** — Replace `rbenv`, `bundler`, `gem` for daily Ruby development |
+| **v1.0** | 8 | **Integration Complete** — No Ruby toolchain needed; wow is `rbenv + ruby-build + bundler + gem` |
+| **v1.x** | 8.3, 8.6, 9 | **Enterprise + Developer Tools** — Corporate proxies, auth, diagnostics, publishing |
+
 ## Micro-Phases
 
 Every micro-phase has a working demo. See PLAN_PHASEn.md for details.
@@ -153,10 +161,13 @@ Every micro-phase has a working demo. See PLAN_PHASEn.md for details.
 | 1 | Skeleton | 1a–1c | `./wow.com init greg` creates project | Done |
 | 2 | HTTPS | 2a–2c | Fetch gem info from rubygems.org | Done |
 | 3 | Ruby Manager | 3a–3e + 7 | Download Ruby, shims, parallel downloads | Done |
-| 4 | .gem Unpack | 4a–4d | Download + unpack sinatra to vendor/ | Next |
-| 5 | Gemfile Parser | 5a–5c | re2c + lemon parse a real Gemfile | |
+| 4 | .gem Unpack | 4a–4d | Download + unpack sinatra to vendor/ | Done |
+| 5 | Gemfile Parser | 5a–5c | re2c + lemon parse a real Gemfile | Next |
 | 6 | PubGrub | 6a–6d | Resolve sinatra deps, generate Gemfile.lock | |
 | 8 | End-to-End | 8a–8c | Full `wow sync` with uv-style output | |
+| 8.3 | HTTP Hardening | 8.3a–8.3e | Compression, proxy, auth, retry, pooling | |
+| 8.6 | wow curl | 8.6a–8.6b | Diagnostic HTTP tool | |
+| 9 | Publish | 9a–9c | `wow publish` to rubygems.org | |
 
 Phase 7 (parallel downloads) was merged into Phase 3.
 
@@ -187,14 +198,19 @@ Code/wow/
 │   │   ├── list.c          # List installed Rubies
 │   │   ├── shims.c         # Create symlink shims (ruby, irb, gem, ...)
 │   │   └── internal.c      # Shared helpers (mkdirs, colour, timing)
+│   ├── gems/
+│   │   ├── cmd.c           # gem subcommand CLI dispatch
+│   │   ├── download.c      # .gem download + SHA-256 verify + cache
+│   │   ├── list.c          # List .gem tar entries
+│   │   ├── meta.c          # Parse gemspec YAML (libyaml + zlib)
+│   │   └── unpack.c        # Extract data.tar.gz to dest dir
 │   ├── sync.c              # wow sync orchestrator (Phase 8)
 │   ├── gemfile.l.re2c      # re2c lexer (Phase 5)
 │   ├── gemfile.y           # lemon grammar (Phase 5)
-│   ├── gem.c               # .gem download + unpack (Phase 4)
 │   └── pubgrub.c           # PubGrub dependency resolver (Phase 6)
 ├── include/wow/             # Public headers (mirror src/ layout)
-│   ├── http.h, download.h, rubies.h  # Umbrella convenience headers
-│   ├── http/, download/, rubies/      # Per-module headers
+│   ├── http.h, download.h, rubies.h, gems.h  # Umbrella convenience headers
+│   ├── http/, download/, rubies/, gems/       # Per-module headers
 │   └── tar.h, registry.h, etc.
 ├── vendor/cjson/
 ├── demos/                   # Per-phase demos (phase0/, phase2/, phase3/)

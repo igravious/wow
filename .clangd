@@ -4,5 +4,6 @@ CompileFlags:
     - -Ivendor/cjson
     - -isystem/home/groobiest/Code/jart/cosmopolitan/.cosmocc/3.9.2/include
     - -isystem/home/groobiest/Code/jart/cosmopolitan
+    - -isystem/home/groobiest/Code/jart/cosmopolitan/third_party/libyaml
     - -std=c17
     - -D_COSMO_SOURCE
