@@ -19,6 +19,9 @@ vendor/
 .agent-relay-ftw-agents
 tmp/
 
+# Corpus test data (snarfed from RubyGems/GitHub)
+snarf/
+
 # Scratch scripts
 gem_matrix.sh
 sanity_check.sh

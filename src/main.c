@@ -11,6 +11,7 @@
 #include "wow/registry.h"
 #include "wow/rubies.h"
 #include "wow/gems.h"
+#include "wow/gemfile.h"
 
 /* External verbose flag from http.c */
 extern int wow_http_debug;
@@ -135,6 +136,9 @@ static const struct {
     { "gem-list",    "List .gem contents",           cmd_gem_list },
     { "gem-meta",    "Show .gem metadata",           cmd_gem_meta },
     { "gem-unpack",  "Unpack .gem to directory",     cmd_gem_unpack },
+    { "gemfile-lex",   "Lex a Gemfile (debug)",      cmd_gemfile_lex },
+    { "gemfile-parse", "Parse a Gemfile",             cmd_gemfile_parse },
+    { "gemfile-deps",  "List Gemfile dependencies",   cmd_gemfile_deps },
 };
 
 #define N_COMMANDS (sizeof(commands) / sizeof(commands[0]))

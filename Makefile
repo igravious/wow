@@ -26,12 +26,13 @@ SRCS = $(wildcard src/*.c) \
        $(wildcard src/download/*.c) \
        $(wildcard src/rubies/*.c) \
        $(wildcard src/gems/*.c) \
+       $(wildcard src/gemfile/*.c) \
        $(wildcard src/util/*.c)
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
        $(BUILDDIR)/cJSON.o
 
 # Create subdirectories for object files
-OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/util $(BUILDDIR)/internal
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/util $(BUILDDIR)/internal
 
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
@@ -79,6 +80,14 @@ $(BUILDDIR)/rubies/%.o: src/rubies/%.c | $(BUILDDIR)/rubies
 $(BUILDDIR)/gems/%.o: src/gems/%.c | $(BUILDDIR)/gems
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -I$(COSMO_SRC)/third_party/libyaml -c $< -o $@
 
+$(BUILDDIR)/gemfile/%.o: src/gemfile/%.c | $(BUILDDIR)/gemfile
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Isrc/gemfile -c $< -o $@
+
+# parser.c is lemon-generated — suppress GCC false positives on table bounds
+$(BUILDDIR)/gemfile/parser.o: src/gemfile/parser.c | $(BUILDDIR)/gemfile
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Isrc/gemfile \
+		-Wno-array-bounds -Wno-maybe-uninitialized -c $< -o $@
+
 $(BUILDDIR)/util/%.o: src/util/%.c | $(BUILDDIR)/util
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Wno-unused-parameter -c $< -o $@
 
@@ -117,6 +126,9 @@ $(BUILDDIR)/rubies: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/gems: | $(BUILDDIR)
+	mkdir -p $@
+
+$(BUILDDIR)/gemfile: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/util: | $(BUILDDIR)
@@ -162,7 +174,19 @@ $(BUILDDIR)/gem_test.com: tests/gem_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAM
 test-gem: $(BUILDDIR)/gem_test.com
 	$(BUILDDIR)/gem_test.com
 
-test: test-tls test-registry test-ruby-mgr test-gem
+$(BUILDDIR)/gemfile_test.com: tests/gemfile_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Isrc/gemfile -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
+	$(ZIPCOPY) $(SSL_ZIP) $@
+
+test-gemfile: $(BUILDDIR)/gemfile_test.com
+	$(BUILDDIR)/gemfile_test.com
+
+test: test-tls test-registry test-ruby-mgr test-gem test-gemfile
+
+# --- Code generation (developer-only, outputs committed) ---
+generate-gemfile-parser:
+	lemon src/gemfile/parser.y
+	re2c -o src/gemfile/lexer.c src/gemfile/lexer.re --no-debug-info
 
 clean:
 	rm -rf $(BUILDDIR)
@@ -170,4 +194,4 @@ clean:
 distclean: clean
 	rm -f config.mk
 
-.PHONY: clean distclean test test-tls test-registry test-ruby-mgr test-gem
+.PHONY: clean distclean test test-tls test-registry test-ruby-mgr test-gem test-gemfile generate-gemfile-parser
