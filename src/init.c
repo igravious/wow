@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "wow/init.h"
+#include "wow/rubies.h"
 #include "wow/version.h"
 
 #define FALLBACK_RUBY_VERSION "4.0.1"
@@ -83,6 +84,10 @@ int cmd_init(int argc, char *argv[]) {
     snprintf(ruby_ver_line, sizeof(ruby_ver_line), "%s\n", ruby_ver);
     if (write_file(".ruby-version", ruby_ver_line) != 0)
         return 1;
+
+    /* Eagerly install the Ruby version (non-fatal if it fails) */
+    if (wow_ruby_ensure(ruby_ver) != 0)
+        fprintf(stderr, "warning: could not install Ruby %s\n", ruby_ver);
 
     if (dir)
         printf("Initialised new project in %s/\n", dir);

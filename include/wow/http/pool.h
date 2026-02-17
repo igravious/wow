@@ -1,9 +1,12 @@
 #ifndef WOW_POOL_H
 #define WOW_POOL_H
 
-#include "wow/http.h"
+#include <stddef.h>
 
 #define WOW_POOL_MAX_CONNS 8
+
+/* Forward declaration from wow/http/client.h */
+struct wow_response;
 
 /*
  * Connection pool for HTTP/HTTPS Keep-Alive reuse.

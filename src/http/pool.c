@@ -32,8 +32,8 @@
 #include "third_party/mbedtls/ssl.h"
 #include "third_party/musl/netdb.h"
 
-#include "wow/http.h"
-#include "wow/pool.h"
+#include "wow/http/client.h"
+#include "wow/http/pool.h"
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)

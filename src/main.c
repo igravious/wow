@@ -1,12 +1,18 @@
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "wow/http.h"
 #include "wow/init.h"
-#include "wow/pool.h"
 #include "wow/registry.h"
+#include "wow/rubies.h"
+
+/* External verbose flag from http.c */
+extern int wow_http_debug;
 
 #define WOW_VERSION "0.1.0"
 
@@ -125,7 +131,7 @@ static const struct {
     { "add",    "Add a gem to Gemfile",           cmd_stub },
     { "remove", "Remove a gem from Gemfile",      cmd_stub },
     { "run",    "Run a command with bundled gems", cmd_stub },
-    { "ruby",   "Manage Ruby installations",      cmd_stub },
+    { "ruby",   "Manage Ruby installations",      cmd_ruby },
     { "bundle", "Bundler compatibility shim",     cmd_stub },
     { "fetch",    "Fetch a URL (debug)",           cmd_fetch },
     { "gem-info",    "Show gem info from rubygems",   cmd_gem_info },
@@ -141,11 +147,66 @@ static void print_usage(void) {
     for (size_t i = 0; i < N_COMMANDS; i++)
         printf("  %-10s %s\n", commands[i].name, commands[i].description);
     printf("\nOptions:\n");
-    printf("  --help     Show this help\n");
-    printf("  --version  Show version\n");
+    printf("  --help, -h       Show this help\n");
+    printf("  --version, -V    Show version\n");
+    printf("  --verbose, -v    Enable verbose HTTP debugging\n");
 }
 
 int main(int argc, char *argv[]) {
+    /*
+     * Shim dispatch: if invoked as "ruby", "irb", etc. via symlink
+     * or hard link, find .ruby-version and exec the managed Ruby binary.
+     */
+    const char *progname = strrchr(argv[0], '/');
+    progname = progname ? progname + 1 : argv[0];
+
+    /* Strip .com suffix (APE binary) */
+    static char basename_buf[64];
+    size_t plen = strlen(progname);
+    if (plen > 4 && strcmp(progname + plen - 4, ".com") == 0) {
+        if (plen - 4 < sizeof(basename_buf)) {
+            memcpy(basename_buf, progname, plen - 4);
+            basename_buf[plen - 4] = '\0';
+            progname = basename_buf;
+        }
+    }
+
+    if (strcmp(progname, "wow") != 0) {
+        /* Shim mode */
+        char version[32];
+        if (wow_find_ruby_version(version, sizeof(version)) != 0) {
+            fprintf(stderr,
+                    "wow: no .ruby-version found (looked from cwd to /)\n");
+            return 1;
+        }
+
+        wow_platform_t plat;
+        wow_detect_platform(&plat);
+        const char *rb_plat = wow_ruby_builder_platform(&plat);
+        if (!rb_plat) {
+            fprintf(stderr, "wow: unsupported platform\n");
+            return 1;
+        }
+
+        char base[PATH_MAX];
+        if (wow_ruby_base_dir(base, sizeof(base)) != 0) return 1;
+
+        char bin_path[PATH_MAX + 256];
+        snprintf(bin_path, sizeof(bin_path), "%s/ruby-%s-%s/bin/%s",
+                 base, version, rb_plat, progname);
+
+        if (access(bin_path, X_OK) != 0) {
+            fprintf(stderr, "wow: Ruby %s not installed "
+                    "(run: wow ruby install %s)\n", version, version);
+            return 1;
+        }
+
+        execv(bin_path, argv);
+        fprintf(stderr, "wow: exec %s failed: %s\n",
+                bin_path, strerror(errno));
+        return 1;
+    }
+
     if (argc < 2) {
         print_usage();
         return 1;
@@ -161,6 +222,19 @@ int main(int argc, char *argv[]) {
     if (strcmp(cmd, "--version") == 0 || strcmp(cmd, "-V") == 0) {
         printf("wow %s\n", WOW_VERSION);
         return 0;
+    }
+
+    /* Handle --verbose / -v flag */
+    if (strcmp(cmd, "--verbose") == 0 || strcmp(cmd, "-v") == 0) {
+        wow_http_debug = 1;
+        if (argc < 3) {
+            print_usage();
+            return 1;
+        }
+        /* Shift args: wow -v <command> -> wow <command> */
+        argc--;
+        argv++;
+        cmd = argv[1];
     }
 
     for (size_t i = 0; i < N_COMMANDS; i++) {
