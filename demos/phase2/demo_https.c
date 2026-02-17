@@ -4,9 +4,9 @@
  * Fetches a URL using wow's HTTP/HTTPS client (mbedTLS + cosmo)
  * and prints the response status, headers, and body.
  *
- * Build:  make -C demos demo_https.com   (after main 'make')
- * Usage:  ./demos/demo_https.com http://example.com
- *         ./demos/demo_https.com https://rubygems.org/api/v1/gems/sinatra.json
+ * Build:  make -C demos/phase2 demo_https.com   (after main 'make')
+ * Usage:  ./demos/phase2/demo_https.com http://example.com
+ *         ./demos/phase2/demo_https.com https://rubygems.org/api/v1/gems/sinatra.json
  */
 
 #include <stdio.h>

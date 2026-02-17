@@ -4,10 +4,10 @@
  * Looks up a gem on rubygems.org using wow's registry API
  * (HTTPS + cJSON) and prints structured info.
  *
- * Build:  make -C demos demo_gem_info.com   (after main 'make')
- * Usage:  ./demos/demo_gem_info.com sinatra
- *         ./demos/demo_gem_info.com rails
- *         ./demos/demo_gem_info.com nonexistent-gem-xyz
+ * Build:  make -C demos/phase2 demo_gem_info.com   (after main 'make')
+ * Usage:  ./demos/phase2/demo_gem_info.com sinatra
+ *         ./demos/phase2/demo_gem_info.com rails
+ *         ./demos/phase2/demo_gem_info.com nonexistent-gem-xyz
  */
 
 #include <stdio.h>
