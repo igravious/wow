@@ -28,6 +28,9 @@ SRCS = $(wildcard src/*.c) \
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
        $(BUILDDIR)/cJSON.o
 
+# Create subdirectories for object files
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/internal
+
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
 HTTPS_SRCS   = $(wildcard $(COSMO_SRC)/net/https/*.c)

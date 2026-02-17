@@ -11,90 +11,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/file.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
+#include "wow/common.h"
 #include "wow/http.h"
 #include "wow/download.h"
+#include "wow/internal/util.h"
 #include "wow/rubies.h"
+#include "wow/rubies/internal.h"
 #include "wow/tar.h"
 
-#define WPATH  (PATH_MAX + 256)
-#define LOCK_MAX_WAIT_MS  45000
-
-#define ANSI_BOLD      "\033[1m"
-#define ANSI_DIM       "\033[2m"
-#define ANSI_CYAN      "\033[36m"
-#define ANSI_RESET     "\033[0m"
-
-static int use_colour(void) { return isatty(STDERR_FILENO); }
-
-static double now_secs(void)
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
-}
-
-static int mkdirs(char *path, mode_t mode)
-{
-    char *p = path;
-    if (*p == '/') p++;
-    for (; *p; p++) {
-        if (*p != '/') continue;
-        *p = '\0';
-        if (mkdir(path, mode) != 0 && errno != EEXIST) {
-            fprintf(stderr, "wow: mkdir %s: %s\n", path, strerror(errno));
-            *p = '/';
-            return -1;
-        }
-        *p = '/';
-    }
-    if (mkdir(path, mode) != 0 && errno != EEXIST) {
-        fprintf(stderr, "wow: mkdir %s: %s\n", path, strerror(errno));
-        return -1;
-    }
-    return 0;
-}
-
-static int acquire_lock(const char *base_dir)
-{
-    char lockpath[WPATH];
-    snprintf(lockpath, sizeof(lockpath), "%s/.lock", base_dir);
-
-    int fd = open(lockpath, O_CREAT | O_RDWR, 0644);
-    if (fd == -1) return -1;
-
-    char pidbuf[32];
-    int plen = snprintf(pidbuf, sizeof(pidbuf), "%d\n", (int)getpid());
-    (void)write(fd, pidbuf, (size_t)plen);
-
-    if (flock(fd, LOCK_EX | LOCK_NB) == 0) return fd;
-
-    fprintf(stderr, "wow: waiting for lock...\n");
-    int waited_ms = 0, sleep_ms = 100;
-    while (waited_ms < LOCK_MAX_WAIT_MS) {
-        usleep((unsigned)(sleep_ms * 1000));
-        waited_ms += sleep_ms;
-        if (flock(fd, LOCK_EX | LOCK_NB) == 0) return fd;
-        sleep_ms *= 2;
-        if (sleep_ms > 5000) sleep_ms = 5000;
-    }
-
-    fprintf(stderr, "wow: timed out waiting for lock\n");
-    close(fd);
-    return -1;
-}
-
-static void release_lock(int fd)
-{
-    if (fd >= 0) {
-        flock(fd, LOCK_UN);
-        close(fd);
-    }
-}
+#define MAX_BATCH 64
 
 int wow_ruby_install_many(const char **versions, int n)
 {
@@ -110,13 +38,12 @@ int wow_ruby_install_many(const char **versions, int n)
 
     char base[PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
-    if (mkdirs(base, 0755) != 0) return -1;
+    if (wow_mkdirs(base, 0755) != 0) return -1;
 
     /* Phase 1: resolve versions and filter already-installed */
-#define MAX_BATCH 64
     char full_vers[MAX_BATCH][32];
     char urls[MAX_BATCH][512];
-    char tmp_paths[MAX_BATCH][WPATH];
+    char tmp_paths[MAX_BATCH][WOW_WPATH];
     char labels[MAX_BATCH][128];
     int  need_download[MAX_BATCH];
     int  n_to_download = 0;
@@ -130,7 +57,7 @@ int wow_ruby_install_many(const char **versions, int n)
                                      sizeof(full_vers[i])) != 0)
             continue;
 
-        char install_dir[WPATH];
+        char install_dir[WOW_WPATH];
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
         snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
@@ -174,13 +101,13 @@ int wow_ruby_install_many(const char **versions, int n)
         n_specs++;
     }
 
-    double t0 = now_secs();
+    double t0 = wow_now_secs();
 
     int n_downloaded = wow_parallel_download(specs, results, n_specs, 0, 0);
     (void)n_downloaded;
 
     /* Phase 3: extract + install sequentially */
-    int lockfd = acquire_lock(base);
+    int lockfd = wow_rubies_acquire_lock(base);
     if (lockfd < 0) {
         for (int s = 0; s < n_specs; s++) unlink(specs[s].dest_path);
         return -1;
@@ -195,13 +122,13 @@ int wow_ruby_install_many(const char **versions, int n)
             continue;
         }
 
-        char staging[WPATH];
+        char staging[WOW_WPATH];
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
         snprintf(staging, sizeof(staging), "%s/.temp-ruby-%s-%s",
                  base, full_vers[vi], rb_plat);
 #pragma GCC diagnostic pop
-        if (mkdirs(staging, 0755) != 0) {
+        if (wow_mkdirs(staging, 0755) != 0) {
             unlink(tmp_paths[vi]);
             continue;
         }
@@ -214,7 +141,7 @@ int wow_ruby_install_many(const char **versions, int n)
             continue;
         }
 
-        char install_dir[WPATH];
+        char install_dir[WOW_WPATH];
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
         snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
@@ -238,7 +165,7 @@ int wow_ruby_install_many(const char **versions, int n)
             }
         }
         if (minor_ver[0]) {
-            char sympath[WPATH];
+            char sympath[WOW_WPATH];
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
             snprintf(sympath, sizeof(sympath), "%s/ruby-%s-%s",
@@ -265,20 +192,20 @@ int wow_ruby_install_many(const char **versions, int n)
         }
     }
 
-    release_lock(lockfd);
+    wow_rubies_release_lock(lockfd);
 
-    double elapsed = now_secs() - t0;
+    double elapsed = wow_now_secs() - t0;
 
     /* Print summary */
-    if (use_colour()) {
-        fprintf(stderr, ANSI_DIM "Installed " ANSI_BOLD "%d Ruby version%s"
-                ANSI_RESET ANSI_DIM " in %.2fs" ANSI_RESET "\n",
+    if (wow_use_colour()) {
+        fprintf(stderr, WOW_ANSI_DIM "Installed " WOW_ANSI_BOLD "%d Ruby version%s"
+                WOW_ANSI_RESET WOW_ANSI_DIM " in %.2fs" WOW_ANSI_RESET "\n",
                 n_installed, n_installed == 1 ? "" : "s", elapsed);
         for (int s = 0; s < n_specs; s++) {
             int vi = spec_to_ver[s];
             if (results[s].ok) {
-                fprintf(stderr, " " ANSI_CYAN "+" ANSI_RESET " "
-                        ANSI_BOLD "%s" ANSI_RESET "\n", labels[vi]);
+                fprintf(stderr, " " WOW_ANSI_CYAN "+" WOW_ANSI_RESET " "
+                        WOW_ANSI_BOLD "%s" WOW_ANSI_RESET "\n", labels[vi]);
             }
         }
     } else {

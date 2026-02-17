@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "wow/http.h"
+#include "wow/internal/util.h"
 #include "wow/init.h"
 #include "wow/registry.h"
 #include "wow/rubies.h"
@@ -66,12 +66,6 @@ static int cmd_gem_info(int argc, char *argv[]) {
     return 0;
 }
 
-static double now_secs(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
-}
-
 static int cmd_bench_pool(int argc, char *argv[]) {
     if (argc < 3) {
         fprintf(stderr, "usage: wow bench-pool <url> <count>\n");
@@ -83,7 +77,7 @@ static int cmd_bench_pool(int argc, char *argv[]) {
 
     /* Benchmark without pool (new connection each time) */
     printf("Without pool (%d requests)...\n", count);
-    double t0 = now_secs();
+    double t0 = wow_now_secs();
     for (int i = 0; i < count; i++) {
         struct wow_response resp;
         if (wow_http_get(url, &resp) != 0) {
@@ -92,14 +86,14 @@ static int cmd_bench_pool(int argc, char *argv[]) {
         }
         wow_response_free(&resp);
     }
-    double t1 = now_secs();
+    double t1 = wow_now_secs();
     printf("  %.3fs (%.1f ms/req)\n", t1 - t0, (t1 - t0) / count * 1000);
 
     /* Benchmark with pool */
     printf("With pool (%d requests)...\n", count);
     struct wow_http_pool pool;
     wow_http_pool_init(&pool, 4);
-    double t2 = now_secs();
+    double t2 = wow_now_secs();
     for (int i = 0; i < count; i++) {
         struct wow_response resp;
         if (wow_http_pool_get(&pool, url, &resp) != 0) {
@@ -109,7 +103,7 @@ static int cmd_bench_pool(int argc, char *argv[]) {
         }
         wow_response_free(&resp);
     }
-    double t3 = now_secs();
+    double t3 = wow_now_secs();
     printf("  %.3fs (%.1f ms/req)\n", t3 - t2, (t3 - t2) / count * 1000);
     printf("  connections: %d new, %d reused\n", pool.new_count, pool.reuse_count);
 

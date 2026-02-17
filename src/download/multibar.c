@@ -22,13 +22,13 @@
 
 #include "wow/download/multibar.h"
 
-#define ANSI_BOLD      "\033[1m"
-#define ANSI_DIM       "\033[2m"
-#define ANSI_CYAN      "\033[36m"
-#define ANSI_GREEN     "\033[32m"
-#define ANSI_RED       "\033[31m"
+#define WOW_ANSI_BOLD      "\033[1m"
+#define WOW_ANSI_DIM       "\033[2m"
+#define WOW_ANSI_CYAN      "\033[36m"
+#define WOW_ANSI_GREEN     "\033[32m"
+#define WOW_ANSI_RED       "\033[31m"
 #define ANSI_WHITE     "\033[37m"
-#define ANSI_RESET     "\033[0m"
+#define WOW_ANSI_RESET     "\033[0m"
 
 #define BAR_WIDTH 30
 
@@ -103,7 +103,7 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
     if (!slot->name) {
         /* Empty slot (worker hasn't started yet) — visible 11 chars */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "  (waiting)" ANSI_RESET);
+                   WOW_ANSI_DIM "  (waiting)" WOW_ANSI_RESET);
         buf_fill(line, linesz, &pos, ' ', target_vw - 11);
         return pos;
     }
@@ -120,12 +120,12 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
          * total = nw + 41, pad 6 to reach target_vw (nw + 47)
          */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_BOLD ANSI_GREEN "%-*.*s"
-                   " \xe2\x9c\x93" ANSI_RESET,
+                   WOW_ANSI_BOLD WOW_ANSI_GREEN "%-*.*s"
+                   " \xe2\x9c\x93" WOW_ANSI_RESET,
                    nw, nw, slot->name);
         buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "(%7s)" ANSI_RESET, sz);
+                   WOW_ANSI_DIM "(%7s)" WOW_ANSI_RESET, sz);
         buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 41));
         return pos;
     }
@@ -140,12 +140,12 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
          * total = nw + 40, pad 7 to reach target_vw (nw + 47)
          */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "%-*.*s" ANSI_RESET
-                   " " ANSI_BOLD ANSI_RED "\xe2\x9c\x97" ANSI_RESET,
+                   WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET
+                   " " WOW_ANSI_BOLD WOW_ANSI_RED "\xe2\x9c\x97" WOW_ANSI_RESET,
                    nw, nw, slot->name);
         buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "(failed)" ANSI_RESET);
+                   WOW_ANSI_DIM "(failed)" WOW_ANSI_RESET);
         buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 40));
         return pos;
     }
@@ -161,19 +161,19 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
 
         /* Dimmed name, padded to nw */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "%-*.*s" ANSI_RESET " ", nw, nw, slot->name);
+                   WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET " ", nw, nw, slot->name);
 
         /* Cyan filled portion */
-        BUF_APPEND(line, linesz, &pos, ANSI_CYAN);
+        BUF_APPEND(line, linesz, &pos, WOW_ANSI_CYAN);
         buf_fill(line, linesz, &pos, '=', filled);
 
         /* Dim empty portion with '>' tip */
         if (empty > 0) {
-            BUF_APPEND(line, linesz, &pos, ANSI_RESET ANSI_DIM ">");
+            BUF_APPEND(line, linesz, &pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
             buf_fill(line, linesz, &pos, '-', empty - 1);
         }
 
-        BUF_APPEND(line, linesz, &pos, ANSI_RESET);
+        BUF_APPEND(line, linesz, &pos, WOW_ANSI_RESET);
 
         /* Bytes: right-aligned 7 / left-aligned 7 (matches uv) */
         BUF_APPEND(line, linesz, &pos, " %7s/%-7s", cur_str, tot_str);
@@ -183,7 +183,7 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
         format_bytes(slot->current, cur_str, sizeof(cur_str));
         /* name(nw) + ' ' + cur(7) = nw + 8 */
         BUF_APPEND(line, linesz, &pos,
-                   ANSI_DIM "%-*.*s" ANSI_RESET " %7s", nw, nw,
+                   WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET " %7s", nw, nw,
                    slot->name, cur_str);
         buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 8));
     }
@@ -224,15 +224,15 @@ static void render_status_line(wow_multibar_t *mb)
 
     if (done < mb->n_total)
         BUF_APPEND(out, sizeof(out), &pos,
-                   ANSI_WHITE "%s" ANSI_RESET " ", spinner[frame]);
+                   ANSI_WHITE "%s" WOW_ANSI_RESET " ", spinner[frame]);
 
     BUF_APPEND(out, sizeof(out), &pos,
-               ANSI_DIM "[%d/%d]" ANSI_RESET " %s downloaded",
+               WOW_ANSI_DIM "[%d/%d]" WOW_ANSI_RESET " %s downloaded",
                done, mb->n_total, bytes_str);
 
     if (mb->n_failed > 0)
         BUF_APPEND(out, sizeof(out), &pos,
-                   " " ANSI_RED "(%d failed)" ANSI_RESET, mb->n_failed);
+                   " " WOW_ANSI_RED "(%d failed)" WOW_ANSI_RESET, mb->n_failed);
 
     if (elapsed > 0.5 && mb->total_bytes > 0) {
         char rate_str[16];
@@ -240,7 +240,7 @@ static void render_status_line(wow_multibar_t *mb)
                      rate_str, sizeof(rate_str));
         /* ⚡ = U+26A1 = \xe2\x9a\xa1 */
         BUF_APPEND(out, sizeof(out), &pos,
-                   " \xe2\x9a\xa1 " ANSI_BOLD "%s/s" ANSI_RESET,
+                   " \xe2\x9a\xa1 " WOW_ANSI_BOLD "%s/s" WOW_ANSI_RESET,
                    rate_str);
     }
 

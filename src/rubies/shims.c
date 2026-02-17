@@ -12,11 +12,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "wow/common.h"
 #include "wow/rubies/shims.h"
 #include "wow/rubies/resolve.h"
-
-/* PATH_MAX extension for composite paths */
-#define WPATH  (PATH_MAX + 256)
+#include "wow/internal/util.h"
 
 /* ── Shim names ───────────────────────────────────────────────────── */
 
@@ -28,37 +27,14 @@ static const char *shim_names[] = {
 
 /* ── Directory helper (also in install.c) ─────────────────────────── */
 
-static int mkdirs(char *path, mode_t mode)
-{
-    char *p = path;
-    if (*p == '/') p++;
-    for (; *p; p++) {
-        if (*p != '/') continue;
-        *p = '\0';
-        if (mkdir(path, mode) != 0 && errno != EEXIST) {
-            fprintf(stderr, "wow: mkdir %s: %s\n", path, strerror(errno));
-            *p = '/';
-            return -1;
-        }
-        *p = '/';
-    }
-    if (mkdir(path, mode) != 0 && errno != EEXIST) {
-        fprintf(stderr, "wow: mkdir %s: %s\n", path, strerror(errno));
-        return -1;
-    }
-    return 0;
-}
-
-/* ── Shim creation ────────────────────────────────────────────────── */
-
 int wow_create_shims(const char *wow_binary_path)
 {
     char shims[PATH_MAX];
     if (wow_shims_dir(shims, sizeof(shims)) != 0) return -1;
-    if (mkdirs(shims, 0755) != 0) return -1;
+    if (wow_mkdirs(shims, 0755) != 0) return -1;
 
     for (const char **name = shim_names; *name; name++) {
-        char shim_path[WPATH];
+        char shim_path[WOW_WPATH];
         snprintf(shim_path, sizeof(shim_path), "%s/%s", shims, *name);
 
         /* Remove existing shim */

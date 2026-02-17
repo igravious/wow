@@ -13,10 +13,10 @@
 
 #include "wow/download/progress.h"
 
-#define ANSI_BOLD      "\033[1m"
-#define ANSI_DIM       "\033[2m"
-#define ANSI_CYAN      "\033[36m"
-#define ANSI_RESET     "\033[0m"
+#define WOW_ANSI_BOLD      "\033[1m"
+#define WOW_ANSI_DIM       "\033[2m"
+#define WOW_ANSI_CYAN      "\033[36m"
+#define WOW_ANSI_RESET     "\033[0m"
 
 #define BAR_WIDTH 30
 
@@ -114,19 +114,19 @@ size_t wow_progress_update(wow_progress_state_t *state, size_t bytes)
 
         /* Dimmed name */
         BUF_APPEND(line, sizeof(line), &pos,
-                   ANSI_DIM "%s" ANSI_RESET " ", state->name);
+                   WOW_ANSI_DIM "%s" WOW_ANSI_RESET " ", state->name);
 
         /* Teal (cyan) filled portion */
-        BUF_APPEND(line, sizeof(line), &pos, ANSI_CYAN);
+        BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_CYAN);
         buf_fill(line, sizeof(line), &pos, '=', filled);
 
         /* Dim empty portion */
         if (empty > 0) {
-            BUF_APPEND(line, sizeof(line), &pos, ANSI_RESET ANSI_DIM ">");
+            BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
             buf_fill(line, sizeof(line), &pos, '-', empty - 1);
         }
 
-        BUF_APPEND(line, sizeof(line), &pos, ANSI_RESET);
+        BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_RESET);
 
         /* Bytes counter */
         BUF_APPEND(line, sizeof(line), &pos, " %7s/%s", cur_str, tot_str);
@@ -135,7 +135,7 @@ size_t wow_progress_update(wow_progress_state_t *state, size_t bytes)
         char cur_str[16];
         format_bytes(state->current, cur_str, sizeof(cur_str));
         BUF_APPEND(line, sizeof(line), &pos,
-                   ANSI_DIM "%s" ANSI_RESET " %s", state->name, cur_str);
+                   WOW_ANSI_DIM "%s" WOW_ANSI_RESET " %s", state->name, cur_str);
     }
 
     /* Single atomic write — no flicker */
@@ -157,13 +157,13 @@ void wow_progress_finish(wow_progress_state_t *state, const char *status)
 
         if (status) {
             BUF_APPEND(line, sizeof(line), &pos,
-                       " " ANSI_BOLD ANSI_CYAN "%s" ANSI_RESET " %s\n",
+                       " " WOW_ANSI_BOLD WOW_ANSI_CYAN "%s" WOW_ANSI_RESET " %s\n",
                        status, state->name);
         } else {
             char tot_str[16];
             format_bytes(state->current, tot_str, sizeof(tot_str));
             BUF_APPEND(line, sizeof(line), &pos,
-                       " " ANSI_CYAN "\u2713" ANSI_RESET " %s (%s)\n",
+                       " " WOW_ANSI_CYAN "\u2713" WOW_ANSI_RESET " %s (%s)\n",
                        state->name, tot_str);
         }
 

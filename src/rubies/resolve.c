@@ -14,11 +14,9 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include "wow/common.h"
 #include "wow/rubies/resolve.h"
 #include "wow/version.h"
-
-/* PATH_MAX extension for composite paths */
-#define WPATH  (PATH_MAX + 256)
 
 /* ── String helper ───────────────────────────────────────────────── */
 
@@ -189,7 +187,7 @@ int wow_find_ruby_version(char *buf, size_t bufsz)
     snprintf(dir, sizeof(dir), "%s", cwd);
 
     for (;;) {
-        char path[WPATH];
+        char path[WOW_WPATH];
         snprintf(path, sizeof(path), "%s/.ruby-version", dir);
 
         FILE *f = fopen(path, "r");
