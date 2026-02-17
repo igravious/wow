@@ -2,11 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "wow/http.h"
 #include "wow/version.h"
 
 #define RELEASES_URL \
     "https://api.github.com/repos/ruby/ruby-builder/releases?per_page=30"
-#define MAX_RESPONSE (64 * 1024)
 
 static int parse_version(const char *s, int *maj, int *min, int *pat) {
     char *end;
@@ -21,27 +21,20 @@ static int parse_version(const char *s, int *maj, int *min, int *pat) {
 }
 
 int wow_latest_ruby_version(char *buf, size_t bufsz) {
-    FILE *fp = popen(
-        "curl -sL -H 'Accept: application/vnd.github+json' "
-        "'" RELEASES_URL "'", "r");
-    if (!fp) return -1;
+    struct wow_response resp;
+    if (wow_http_get(RELEASES_URL, &resp) != 0)
+        return -1;
 
-    char *resp = malloc(MAX_RESPONSE);
-    if (!resp) { pclose(fp); return -1; }
-
-    size_t total = 0;
-    size_t n;
-    while ((n = fread(resp + total, 1, MAX_RESPONSE - total - 1, fp)) > 0) {
-        total += n;
-        if (total >= MAX_RESPONSE - 1) break;
+    if (resp.status != 200) {
+        fprintf(stderr, "wow: GitHub API returned status %d\n", resp.status);
+        wow_response_free(&resp);
+        return -1;
     }
-    resp[total] = '\0';
-    pclose(fp);
 
     int best_maj = 0, best_min = 0, best_pat = 0;
     int found = 0;
 
-    const char *p = resp;
+    const char *p = resp.body;
     while ((p = strstr(p, "\"tag_name\"")) != NULL) {
         p += 10; /* skip "tag_name" */
         while (*p == ' ' || *p == ':' || *p == '\t') p++;
@@ -62,7 +55,7 @@ int wow_latest_ruby_version(char *buf, size_t bufsz) {
         }
     }
 
-    free(resp);
+    wow_response_free(&resp);
     if (!found) return -1;
 
     int w = snprintf(buf, bufsz, "%d.%d.%d", best_maj, best_min, best_pat);
