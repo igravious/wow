@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:
+    - -Iinclude
+    - -Ivendor/cjson
+    - -isystem/home/groobiest/Code/jart/cosmopolitan/.cosmocc/3.9.2/include
+    - -isystem/home/groobiest/Code/jart/cosmopolitan
+    - -std=c17
+    - -D_COSMO_SOURCE
