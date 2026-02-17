@@ -12,11 +12,12 @@
 
 int cmd_gem_download(int argc, char *argv[])
 {
-    if (argc < 3) {
-        fprintf(stderr, "usage: wow gem-download <gem-name> <version>\n");
+    if (argc < 2) {
+        fprintf(stderr, "usage: wow gem-download <gem-name> [version]\n");
         return 1;
     }
-    return wow_gem_download(argv[1], argv[2], NULL, 0) == 0 ? 0 : 1;
+    const char *version = argc >= 3 ? argv[2] : NULL;
+    return wow_gem_download(argv[1], version, NULL, 0) == 0 ? 0 : 1;
 }
 
 int cmd_gem_list(int argc, char *argv[])

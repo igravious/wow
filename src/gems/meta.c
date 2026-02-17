@@ -42,6 +42,12 @@ static int gunzip_mem(const uint8_t *gz, size_t gz_len,
         return -1;
     }
 
+    if (gz_len > (size_t)UINT_MAX) {
+        fprintf(stderr, "wow: compressed metadata too large\n");
+        inflateEnd(&strm);
+        return -1;
+    }
+
     strm.next_in = (uint8_t *)gz;
     strm.avail_in = (uInt)gz_len;
 

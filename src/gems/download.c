@@ -167,17 +167,13 @@ int wow_gem_download(const char *name, const char *version,
                  name, info.version);
     }
 
-    /* 5. Download to temp file */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp-%s-%s.gem",
-             cache_dir, name, version ? version : info.version);
-#pragma GCC diagnostic pop
+    /* 5. Download to temp file (mkstemps avoids race with concurrent downloads) */
+    snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp-XXXXXX.gem", cache_dir);
 
-    fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    fd = mkstemps(tmp_path, 4);  /* 4 = strlen(".gem") */
     if (fd == -1) {
-        fprintf(stderr, "wow: cannot create %s: %s\n",
-                tmp_path, strerror(errno));
+        fprintf(stderr, "wow: cannot create temp file in %s: %s\n",
+                cache_dir, strerror(errno));
         goto cleanup;
     }
 
