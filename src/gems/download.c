@@ -19,14 +19,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <third_party/mbedtls/sha256.h>
-
 #include "wow/common.h"
 #include "wow/download.h"
 #include "wow/gems/download.h"
 #include "wow/http.h"
 #include "wow/internal/util.h"
 #include "wow/registry.h"
+#include "wow/util/sha256.h"
 
 /* ── SHA-256 verification ────────────────────────────────────────── */
 
@@ -36,39 +35,9 @@
  */
 static int verify_sha256(const char *path, const char *expected_hex)
 {
-    FILE *f = fopen(path, "rb");
-    if (!f) {
-        fprintf(stderr, "wow: cannot open %s for hashing: %s\n",
-                path, strerror(errno));
-        return -1;
-    }
-
-    mbedtls_sha256_context ctx;
-    mbedtls_sha256_init(&ctx);
-    mbedtls_sha256_starts_ret(&ctx, 0);  /* 0 = SHA-256, not SHA-224 */
-
-    uint8_t buf[8192];
-    size_t n;
-    while ((n = fread(buf, 1, sizeof(buf), f)) > 0)
-        mbedtls_sha256_update_ret(&ctx, buf, n);
-
-    int read_err = ferror(f);
-    fclose(f);
-
-    if (read_err) {
-        fprintf(stderr, "wow: read error hashing %s\n", path);
-        mbedtls_sha256_free(&ctx);
-        return -1;
-    }
-
-    uint8_t digest[32];
-    mbedtls_sha256_finish_ret(&ctx, digest);
-    mbedtls_sha256_free(&ctx);
-
-    /* Convert to hex and compare */
     char hex[65];
-    for (int i = 0; i < 32; i++)
-        snprintf(hex + i * 2, 3, "%02x", digest[i]);
+    if (wow_sha256_file(path, hex, sizeof(hex)) != 0)
+        return -1;
 
     if (strcmp(hex, expected_hex) != 0) {
         fprintf(stderr, "wow: SHA-256 mismatch for %s\n"
@@ -168,7 +137,10 @@ int wow_gem_download(const char *name, const char *version,
     }
 
     /* 5. Download to temp file (mkstemps avoids race with concurrent downloads) */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp-XXXXXX.gem", cache_dir);
+#pragma GCC diagnostic pop
 
     fd = mkstemps(tmp_path, 4);  /* 4 = strlen(".gem") */
     if (fd == -1) {

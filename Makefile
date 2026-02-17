@@ -25,12 +25,13 @@ SRCS = $(wildcard src/*.c) \
        $(wildcard src/http/*.c) \
        $(wildcard src/download/*.c) \
        $(wildcard src/rubies/*.c) \
-       $(wildcard src/gems/*.c)
+       $(wildcard src/gems/*.c) \
+       $(wildcard src/util/*.c)
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
        $(BUILDDIR)/cJSON.o
 
 # Create subdirectories for object files
-OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/internal
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/util $(BUILDDIR)/internal
 
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
@@ -78,6 +79,9 @@ $(BUILDDIR)/rubies/%.o: src/rubies/%.c | $(BUILDDIR)/rubies
 $(BUILDDIR)/gems/%.o: src/gems/%.c | $(BUILDDIR)/gems
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -I$(COSMO_SRC)/third_party/libyaml -c $< -o $@
 
+$(BUILDDIR)/util/%.o: src/util/%.c | $(BUILDDIR)/util
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Wno-unused-parameter -c $< -o $@
+
 $(BUILDDIR)/cJSON.o: vendor/cjson/cJSON.c | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Ivendor/cjson -c $< -o $@
 
@@ -113,6 +117,9 @@ $(BUILDDIR)/rubies: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/gems: | $(BUILDDIR)
+	mkdir -p $@
+
+$(BUILDDIR)/util: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/mbedtls: | $(BUILDDIR)

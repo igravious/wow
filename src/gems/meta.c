@@ -12,95 +12,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <third_party/zlib/zlib.h>
 #include <yaml.h>
 
 #include "wow/gems/meta.h"
 #include "wow/tar.h"
+#include "wow/util/gunzip.h"
 
 /* Maximum size for metadata.gz (1 MiB — gemspecs are tiny) */
 #define MAX_METADATA_SIZE (1024 * 1024)
 
 /* Maximum decompressed YAML size (4 MiB) */
 #define MAX_YAML_SIZE (4 * 1024 * 1024)
-
-/* ── Gzip decompression in memory ────────────────────────────────── */
-
-/*
- * Decompress gzip data in memory.
- * Caller must free(*out).  Returns 0 on success.
- */
-static int gunzip_mem(const uint8_t *gz, size_t gz_len,
-                      uint8_t **out, size_t *out_len)
-{
-    z_stream strm;
-    memset(&strm, 0, sizeof(strm));
-
-    /* 16 + MAX_WBITS = gzip header handling */
-    if (inflateInit2(&strm, 16 + MAX_WBITS) != Z_OK) {
-        fprintf(stderr, "wow: zlib inflateInit2 failed\n");
-        return -1;
-    }
-
-    if (gz_len > (size_t)UINT_MAX) {
-        fprintf(stderr, "wow: compressed metadata too large\n");
-        inflateEnd(&strm);
-        return -1;
-    }
-
-    strm.next_in = (uint8_t *)gz;
-    strm.avail_in = (uInt)gz_len;
-
-    size_t alloc = gz_len * 4;
-    if (alloc < 4096) alloc = 4096;
-    if (alloc > MAX_YAML_SIZE) alloc = MAX_YAML_SIZE;
-
-    uint8_t *buf = malloc(alloc);
-    if (!buf) {
-        inflateEnd(&strm);
-        return -1;
-    }
-
-    size_t total = 0;
-    int zrc;
-    do {
-        if (total >= alloc) {
-            size_t newalloc = alloc * 2;
-            if (newalloc > MAX_YAML_SIZE) {
-                fprintf(stderr, "wow: decompressed metadata too large\n");
-                free(buf);
-                inflateEnd(&strm);
-                return -1;
-            }
-            uint8_t *tmp = realloc(buf, newalloc);
-            if (!tmp) {
-                free(buf);
-                inflateEnd(&strm);
-                return -1;
-            }
-            buf = tmp;
-            alloc = newalloc;
-        }
-
-        strm.next_out = buf + total;
-        strm.avail_out = (uInt)(alloc - total);
-        zrc = inflate(&strm, Z_NO_FLUSH);
-
-        if (zrc == Z_STREAM_ERROR || zrc == Z_DATA_ERROR || zrc == Z_MEM_ERROR) {
-            fprintf(stderr, "wow: zlib inflate error: %d\n", zrc);
-            free(buf);
-            inflateEnd(&strm);
-            return -1;
-        }
-
-        total = alloc - strm.avail_out;
-    } while (zrc != Z_STREAM_END);
-
-    inflateEnd(&strm);
-    *out = buf;
-    *out_len = total;
-    return 0;
-}
 
 /* ── YAML document tree walking ──────────────────────────────────── */
 
@@ -406,7 +328,7 @@ int wow_gemspec_parse(const char *gem_path, struct wow_gemspec *spec)
     /* Decompress */
     uint8_t *yaml_data = NULL;
     size_t yaml_len = 0;
-    int rc = gunzip_mem(gz_data, gz_len, &yaml_data, &yaml_len);
+    int rc = wow_gunzip(gz_data, gz_len, &yaml_data, &yaml_len, MAX_YAML_SIZE);
     free(gz_data);
 
     if (rc != 0) {
