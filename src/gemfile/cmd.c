@@ -13,7 +13,7 @@
 int cmd_gemfile_lex(int argc, char *argv[])
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: wow gemfile-lex <Gemfile>\n");
+        fprintf(stderr, "usage: wow debug gemfile-lex <Gemfile>\n");
         return 1;
     }
     return wow_gemfile_lex_file(argv[1]) == 0 ? 0 : 1;

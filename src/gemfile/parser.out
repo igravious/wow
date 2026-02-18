@@ -639,33 +639,57 @@ The first-set of non-terminals is shown after the name.
    25: LPAREN
    26: RPAREN
    27: PERCENT_ARRAY
-   28: gem_opts: <lambda> COMMA
-   29: ruby_opts: <lambda> COMMA
-   30: file: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   31: stmts: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   32: stmt: SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   33: source_stmt: SOURCE
-   34: gem_stmt: GEM
-   35: group_stmt: GROUP
-   36: ruby_stmt: RUBY
-   37: gemspec_stmt: GEMSPEC
-   38: platforms_stmt: PLATFORMS
-   39: plugin_stmt: PLUGIN
-   40: array: LBRACKET PERCENT_ARRAY
-   41: array_items: STRING SYMBOL
-   42: group_open: GROUP
-   43: name_list: STRING SYMBOL
-   44: platforms_open: PLATFORMS
-   45: platform_names: SYMBOL
-   46: gemspec_opts: <lambda> SYMBOL KEY COMMA
+   28: IF
+   29: UNLESS
+   30: ELSE
+   31: ELSIF
+   32: EVAL_GEMFILE
+   33: EQ
+   34: NEQ
+   35: GTE
+   36: LTE
+   37: GT
+   38: LT
+   39: MATCH
+   40: AND
+   41: OR
+   42: BANG
+   43: ASSIGN
+   44: DOT
+   45: COLON_COLON
+   46: PIPE
+   47: QUESTION
+   48: INTEGER
+   49: FLOAT_LIT
+   50: gem_opts: <lambda> COMMA
+   51: ruby_opts: <lambda> COMMA
+   52: file: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
+   53: stmts: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
+   54: stmt: SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
+   55: source_stmt: SOURCE
+   56: gem_stmt: GEM
+   57: group_stmt: GROUP
+   58: ruby_stmt: RUBY
+   59: gemspec_stmt: GEMSPEC
+   60: platforms_stmt: PLATFORMS
+   61: plugin_stmt: PLUGIN
+   62: array: LBRACKET PERCENT_ARRAY
+   63: array_items: STRING SYMBOL
+   64: group_open: GROUP
+   65: name_list: STRING SYMBOL
+   66: platforms_open: PLATFORMS
+   67: platform_names: SYMBOL
+   68: gemspec_opts: <lambda> SYMBOL KEY COMMA
 ----------------------------------------------------
 Syntax-only Symbols:
 The following symbols never carry semantic content.
 
 $ SOURCE GEM GROUP DO END RUBY GEMSPEC LIT_TRUE LIT_FALSE LIT_NIL COMMA
 HASHROCKET NEWLINE IDENT UNSUPPORTED ERROR GIT_SOURCE PLUGIN PLATFORMS
-LBRACKET RBRACKET LPAREN RPAREN PERCENT_ARRAY file stmts stmt source_stmt
-gem_stmt group_stmt ruby_stmt gemspec_stmt platforms_stmt plugin_stmt array
+LBRACKET RBRACKET LPAREN RPAREN PERCENT_ARRAY IF UNLESS ELSE ELSIF
+EVAL_GEMFILE EQ NEQ GTE LTE GT LT MATCH AND OR BANG ASSIGN DOT COLON_COLON
+PIPE QUESTION INTEGER FLOAT_LIT file stmts stmt source_stmt gem_stmt
+group_stmt ruby_stmt gemspec_stmt platforms_stmt plugin_stmt array
 array_items group_open name_list platforms_open platform_names gemspec_opts
 ----------------------------------------------------
 Rules:

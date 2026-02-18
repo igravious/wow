@@ -8,10 +8,10 @@
 
 #include "wow/gemfile/types.h"
 #include "wow/gemfile/lexer.h"
+#include "wow/gemfile/eval.h"
 #include "wow/gemfile/parse.h"
 
 /* Forward declarations for CLI handlers */
-int cmd_gemfile_lex(int argc, char *argv[]);
 int cmd_gemfile_parse(int argc, char *argv[]);
 int cmd_gemfile_deps(int argc, char *argv[]);
 

@@ -96,6 +96,13 @@ static void gem_opts_acc_free(struct gem_opts_acc *a)
 %token LBRACKET RBRACKET LPAREN RPAREN .
 %token PERCENT_ARRAY .
 
+/* Evaluator-only tokens — the parser never sees these; they exist
+ * solely so parser.h assigns them numeric IDs for the lexer/evaluator. */
+%token IF UNLESS ELSE ELSIF EVAL_GEMFILE .
+%token EQ NEQ GTE LTE GT LT MATCH .
+%token AND OR BANG ASSIGN DOT COLON_COLON PIPE QUESTION .
+%token INTEGER FLOAT_LIT .
+
 %syntax_error {
     (void)yymajor;
     (void)yyminor;

@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "wow/gemfile/lexer.h"
+#include "wow/gemfile/eval.h"
 #include "wow/gemfile/types.h"
 #include "wow/gemfile/parse.h"
 #include "parser.h"
@@ -106,6 +107,28 @@ static const char *token_name(int id)
     case LPAREN:        return "LPAREN";
     case RPAREN:        return "RPAREN";
     case PERCENT_ARRAY: return "PERCENT_ARRAY";
+    case IF:            return "IF";
+    case UNLESS:        return "UNLESS";
+    case ELSE:          return "ELSE";
+    case ELSIF:         return "ELSIF";
+    case EVAL_GEMFILE:  return "EVAL_GEMFILE";
+    case EQ:            return "EQ";
+    case NEQ:           return "NEQ";
+    case GTE:           return "GTE";
+    case LTE:           return "LTE";
+    case GT:            return "GT";
+    case LT:            return "LT";
+    case MATCH:         return "MATCH";
+    case AND:           return "AND";
+    case OR:            return "OR";
+    case BANG:          return "BANG";
+    case ASSIGN:        return "ASSIGN";
+    case DOT:           return "DOT";
+    case COLON_COLON:   return "COLON_COLON";
+    case PIPE:          return "PIPE";
+    case QUESTION:      return "QUESTION";
+    case INTEGER:       return "INTEGER";
+    case FLOAT_LIT:     return "FLOAT_LIT";
     default:            return "?";
     }
 }
@@ -145,23 +168,27 @@ int wow_gemfile_parse_buf(const char *buf, int len, struct wow_gemfile *gf)
     struct wow_lexer lex;
     wow_lexer_init(&lex, buf, len);
 
+    struct wow_eval_ctx eval;
+    wow_eval_init(&eval, &lex, NULL, NULL, buf, len);
+
     void *parser = ParseAlloc(malloc);
-    if (!parser) return -1;
+    if (!parser) { wow_eval_free(&eval); return -1; }
 
     int rc = 0;
     struct wow_token tok;
     int id;
 
-    while ((id = wow_lexer_scan(&lex, &tok)) != 0) {
-        if (id == UNSUPPORTED) {
+    while ((id = wow_eval_next(&eval, &tok)) != 0) {
+        if (id < 0) {
+            /* Evaluator error */
             int line_len;
-            const char *line_text = find_line(buf, tok.line, &line_len);
+            const char *line_text = find_line(buf, eval.error_line,
+                                              &line_len);
             fprintf(stderr,
-                "wow: unsupported syntax at line %d:\n"
-                "  %d | %.*s\n"
-                "    wow does not evaluate Ruby code in Gemfiles.\n"
-                "    Supported directives: source, gem, group, ruby, gemspec\n",
-                tok.line, tok.line, line_len, line_text);
+                "wow: %s at line %d:\n"
+                "  %d | %.*s\n",
+                eval.error_msg, eval.error_line,
+                eval.error_line, line_len, line_text);
             rc = -1;
             break;
         }
@@ -197,6 +224,7 @@ int wow_gemfile_parse_buf(const char *buf, int len, struct wow_gemfile *gf)
     }
 
     ParseFree(parser, free);
+    wow_eval_free(&eval);
 
     if (gf->_deps_cap == (size_t)-1) {
         wow_gemfile_free(gf);
@@ -212,7 +240,72 @@ int wow_gemfile_parse_file(const char *path, struct wow_gemfile *gf)
     char *buf = read_file(path, &len);
     if (!buf) return -1;
 
-    int rc = wow_gemfile_parse_buf(buf, len, gf);
+    /* Use the file-path-aware version for eval_gemfile support */
+    wow_gemfile_init(gf);
+
+    struct wow_lexer lex;
+    wow_lexer_init(&lex, buf, len);
+
+    struct wow_eval_ctx eval;
+    wow_eval_init(&eval, &lex, NULL, path, buf, len);
+
+    void *parser = ParseAlloc(malloc);
+    if (!parser) { wow_eval_free(&eval); free(buf); return -1; }
+
+    int rc = 0;
+    struct wow_token tok;
+    int id;
+
+    while ((id = wow_eval_next(&eval, &tok)) != 0) {
+        if (id < 0) {
+            int line_len;
+            const char *line_text = find_line(buf, eval.error_line,
+                                              &line_len);
+            fprintf(stderr,
+                "wow: %s at line %d:\n"
+                "  %d | %.*s\n",
+                eval.error_msg, eval.error_line,
+                eval.error_line, line_len, line_text);
+            rc = -1;
+            break;
+        }
+        if (id == ERROR) {
+            int line_len;
+            const char *line_text = find_line(buf, tok.line, &line_len);
+            fprintf(stderr,
+                "wow: unexpected character at line %d:\n"
+                "  %d | %.*s\n",
+                tok.line, tok.line, line_len, line_text);
+            rc = -1;
+            break;
+        }
+
+        Parse(parser, id, tok, gf);
+
+        if (gf->_deps_cap == (size_t)-1) {
+            int line_len;
+            const char *line_text = find_line(buf, tok.line, &line_len);
+            fprintf(stderr, "  %d | %.*s\n",
+                    tok.line, line_len, line_text);
+            rc = -1;
+            break;
+        }
+    }
+
+    if (rc == 0) {
+        struct wow_token eof_tok = { .start = NULL, .length = 0,
+                                     .line = lex.line };
+        Parse(parser, 0, eof_tok, gf);
+    }
+
+    ParseFree(parser, free);
+    wow_eval_free(&eval);
+
+    if (gf->_deps_cap == (size_t)-1) {
+        wow_gemfile_free(gf);
+        rc = -1;
+    }
+
     free(buf);
     return rc;
 }

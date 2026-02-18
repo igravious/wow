@@ -262,15 +262,18 @@ static void test_comments(void)
 
 /* ── Test: unsupported syntax → error ───────────────────────────── */
 
-static const char UNSUPPORTED_IF[] =
+static const char UNSUPPORTED_CASE[] =
     "source \"https://rubygems.org\"\n"
-    "if RUBY_VERSION >= \"3.0\"\n"
+    "case RUBY_ENGINE\n"
+    "when \"ruby\"\n"
     "  gem \"new-gem\"\n"
     "end\n";
 
-static const char UNSUPPORTED_EVAL[] =
+static const char UNSUPPORTED_DEF[] =
     "source \"https://rubygems.org\"\n"
-    "eval_gemfile \"other.rb\"\n";
+    "def my_gems\n"
+    "  gem \"sinatra\"\n"
+    "end\n";
 
 static void test_unsupported(void)
 {
@@ -281,11 +284,11 @@ static void test_unsupported(void)
     FILE *saved_stderr = stderr;
     stderr = fopen("/dev/null", "w");
 
-    int rc1 = parse(UNSUPPORTED_IF, &gf);
-    check("if rejected", rc1 != 0);
+    int rc1 = parse(UNSUPPORTED_CASE, &gf);
+    check("case/when rejected", rc1 != 0);
 
-    int rc2 = parse(UNSUPPORTED_EVAL, &gf);
-    check("eval_gemfile rejected", rc2 != 0);
+    int rc2 = parse(UNSUPPORTED_DEF, &gf);
+    check("def rejected", rc2 != 0);
 
     fclose(stderr);
     stderr = saved_stderr;
@@ -769,6 +772,582 @@ static void test_nested_blocks(void)
     wow_gemfile_free(&gf);
 }
 
+/* ═══════════════════════════════════════════════════════════════════ */
+/* Evaluator tests (Phase 5b — if/unless/elsif/else, ENV, variables) */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Test: if true includes gems ────────────────────────────────── */
+
+static const char EVAL_IF_TRUE[] =
+    "source \"https://rubygems.org\"\n"
+    "if true\n"
+    "  gem \"inside\"\n"
+    "end\n"
+    "gem \"outside\"\n";
+
+static void test_eval_if_true(void)
+{
+    printf("test_eval_if_true:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_IF_TRUE, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = inside", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "inside") == 0);
+    check("dep[1] = outside", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "outside") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: if false skips gems ──────────────────────────────────── */
+
+static const char EVAL_IF_FALSE[] =
+    "source \"https://rubygems.org\"\n"
+    "if false\n"
+    "  gem \"skipped\"\n"
+    "end\n"
+    "gem \"kept\"\n";
+
+static void test_eval_if_false(void)
+{
+    printf("test_eval_if_false:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_IF_FALSE, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = kept", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "kept") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: unless ───────────────────────────────────────────────── */
+
+static const char EVAL_UNLESS[] =
+    "source \"https://rubygems.org\"\n"
+    "unless false\n"
+    "  gem \"included\"\n"
+    "end\n"
+    "unless true\n"
+    "  gem \"excluded\"\n"
+    "end\n";
+
+static void test_eval_unless(void)
+{
+    printf("test_eval_unless:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_UNLESS, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = included", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "included") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: if/elsif/else branch selection ───────────────────────── */
+
+static const char EVAL_ELSIF[] =
+    "source \"https://rubygems.org\"\n"
+    "if false\n"
+    "  gem \"branch1\"\n"
+    "elsif true\n"
+    "  gem \"branch2\"\n"
+    "else\n"
+    "  gem \"branch3\"\n"
+    "end\n";
+
+static void test_eval_elsif(void)
+{
+    printf("test_eval_elsif:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_ELSIF, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = branch2", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "branch2") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: if false / else takes else ───────────────────────────── */
+
+static const char EVAL_ELSE[] =
+    "source \"https://rubygems.org\"\n"
+    "if false\n"
+    "  gem \"nope\"\n"
+    "else\n"
+    "  gem \"yep\"\n"
+    "end\n";
+
+static void test_eval_else(void)
+{
+    printf("test_eval_else:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_ELSE, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = yep", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "yep") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: nested if inside group do/end ────────────────────────── */
+
+static const char EVAL_NESTED_IF[] =
+    "source \"https://rubygems.org\"\n"
+    "group :development do\n"
+    "  gem \"pry\"\n"
+    "  if true\n"
+    "    gem \"debug\"\n"
+    "  end\n"
+    "  if false\n"
+    "    gem \"byebug\"\n"
+    "  end\n"
+    "end\n";
+
+static void test_eval_nested_if(void)
+{
+    printf("test_eval_nested_if:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_NESTED_IF, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = pry", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "pry") == 0);
+    check("dep[1] = debug", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "debug") == 0);
+    check("pry group=development", gf.n_deps > 0 && gf.deps[0].group &&
+          strcmp(gf.deps[0].group, "development") == 0);
+    check("debug group=development", gf.n_deps > 1 && gf.deps[1].group &&
+          strcmp(gf.deps[1].group, "development") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: trailing if true → gem included ──────────────────────── */
+
+static const char EVAL_TRAILING_IF_TRUE[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"always\"\n"
+    "gem \"conditional\" if true\n";
+
+static void test_eval_trailing_if_true(void)
+{
+    printf("test_eval_trailing_if_true:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_TRAILING_IF_TRUE, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = always", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "always") == 0);
+    check("dep[1] = conditional", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "conditional") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: trailing if false → gem excluded ─────────────────────── */
+
+static const char EVAL_TRAILING_IF_FALSE[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"always\"\n"
+    "gem \"conditional\" if false\n";
+
+static void test_eval_trailing_if_false(void)
+{
+    printf("test_eval_trailing_if_false:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_TRAILING_IF_FALSE, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = always", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "always") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: trailing unless true → gem excluded ──────────────────── */
+
+static const char EVAL_TRAILING_UNLESS[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"yes\" unless false\n"
+    "gem \"no\" unless true\n";
+
+static void test_eval_trailing_unless(void)
+{
+    printf("test_eval_trailing_unless:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_TRAILING_UNLESS, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = yes", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "yes") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: ENV["KEY"] exists → truthy ───────────────────────────── */
+
+static const char EVAL_ENV_EXISTS[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"base\"\n"
+    "gem \"env-gem\" if ENV[\"WOW_TEST_PRESENT\"]\n";
+
+static void test_eval_env_exists(void)
+{
+    printf("test_eval_env_exists:\n");
+    struct wow_gemfile gf;
+
+    setenv("WOW_TEST_PRESENT", "1", 1);
+    int rc = parse(EVAL_ENV_EXISTS, &gf);
+    unsetenv("WOW_TEST_PRESENT");
+
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[1] = env-gem", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "env-gem") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: ENV["KEY"] missing → nil (falsy) ─────────────────────── */
+
+static const char EVAL_ENV_MISSING[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"base\"\n"
+    "gem \"env-gem\" if ENV[\"WOW_TEST_ABSENT_12345\"]\n";
+
+static void test_eval_env_missing(void)
+{
+    printf("test_eval_env_missing:\n");
+    struct wow_gemfile gf;
+
+    unsetenv("WOW_TEST_ABSENT_12345");
+    int rc = parse(EVAL_ENV_MISSING, &gf);
+
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = base", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "base") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: ENV["KEY"] == "value" comparison ─────────────────────── */
+
+static const char EVAL_ENV_EQ[] =
+    "source \"https://rubygems.org\"\n"
+    "if ENV[\"WOW_TEST_EQ\"] == \"yes\"\n"
+    "  gem \"matched\"\n"
+    "end\n"
+    "gem \"always\"\n";
+
+static void test_eval_env_eq(void)
+{
+    printf("test_eval_env_eq:\n");
+    struct wow_gemfile gf;
+
+    /* Set to matching value */
+    setenv("WOW_TEST_EQ", "yes", 1);
+    int rc1 = parse(EVAL_ENV_EQ, &gf);
+    check("parses OK (match)", rc1 == 0);
+    check("2 deps (match)", gf.n_deps == 2);
+    check("dep[0] = matched", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "matched") == 0);
+    wow_gemfile_free(&gf);
+
+    /* Set to non-matching value */
+    setenv("WOW_TEST_EQ", "no", 1);
+    int rc2 = parse(EVAL_ENV_EQ, &gf);
+    check("parses OK (no match)", rc2 == 0);
+    check("1 dep (no match)", gf.n_deps == 1);
+    check("dep[0] = always", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "always") == 0);
+    wow_gemfile_free(&gf);
+
+    unsetenv("WOW_TEST_EQ");
+}
+
+/* ── Test: RUBY_VERSION >= "3.0" ────────────────────────────────── */
+
+static const char EVAL_RUBY_VER[] =
+    "source \"https://rubygems.org\"\n"
+    "if RUBY_VERSION >= \"3.0\"\n"
+    "  gem \"modern\"\n"
+    "end\n"
+    "if RUBY_VERSION < \"2.0\"\n"
+    "  gem \"ancient\"\n"
+    "end\n";
+
+static void test_eval_ruby_version_cmp(void)
+{
+    printf("test_eval_ruby_version_cmp:\n");
+    struct wow_gemfile gf;
+    /* Default RUBY_VERSION is "3.3.0" */
+    int rc = parse(EVAL_RUBY_VER, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = modern", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "modern") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: variable assignment + conditional ────────────────────── */
+
+static const char EVAL_VAR_ASSIGN[] =
+    "source \"https://rubygems.org\"\n"
+    "want_debug = true\n"
+    "gem \"debug\" if want_debug\n"
+    "gem \"always\"\n";
+
+static void test_eval_variable_assign(void)
+{
+    printf("test_eval_variable_assign:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_VAR_ASSIGN, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = debug", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "debug") == 0);
+    check("dep[1] = always", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "always") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: variable from ENV ────────────────────────────────────── */
+
+static const char EVAL_VAR_ENV[] =
+    "source \"https://rubygems.org\"\n"
+    "ci = ENV[\"WOW_TEST_CI\"]\n"
+    "gem \"ci-reporter\" if ci\n"
+    "gem \"always\"\n";
+
+static void test_eval_variable_env(void)
+{
+    printf("test_eval_variable_env:\n");
+    struct wow_gemfile gf;
+
+    /* CI set */
+    setenv("WOW_TEST_CI", "1", 1);
+    int rc1 = parse(EVAL_VAR_ENV, &gf);
+    check("parses OK (ci set)", rc1 == 0);
+    check("2 deps (ci set)", gf.n_deps == 2);
+    check("dep[0] = ci-reporter", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "ci-reporter") == 0);
+    wow_gemfile_free(&gf);
+
+    /* CI unset */
+    unsetenv("WOW_TEST_CI");
+    int rc2 = parse(EVAL_VAR_ENV, &gf);
+    check("parses OK (ci unset)", rc2 == 0);
+    check("1 dep (ci unset)", gf.n_deps == 1);
+    check("dep[0] = always", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "always") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: Gem::Version.new() comparison ────────────────────────── */
+
+static const char EVAL_GEM_VERSION[] =
+    "source \"https://rubygems.org\"\n"
+    "if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new(\"3.0.0\")\n"
+    "  gem \"modern-gem\"\n"
+    "end\n";
+
+static void test_eval_gem_version(void)
+{
+    printf("test_eval_gem_version:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_GEM_VERSION, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = modern-gem", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "modern-gem") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: && and || operators ──────────────────────────────────── */
+
+static const char EVAL_AND_OR[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"both\" if true && true\n"
+    "gem \"neither\" if true && false\n"
+    "gem \"either\" if false || true\n"
+    "gem \"none\" if false || false\n";
+
+static void test_eval_and_or(void)
+{
+    printf("test_eval_and_or:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_AND_OR, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = both", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "both") == 0);
+    check("dep[1] = either", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "either") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: interleaved group do/end and if/end ──────────────────── */
+
+static const char EVAL_INTERLEAVED[] =
+    "source \"https://rubygems.org\"\n"
+    "group :test do\n"
+    "  if true\n"
+    "    gem \"rspec\"\n"
+    "  end\n"
+    "  gem \"minitest\"\n"
+    "end\n"
+    "gem \"sinatra\"\n";
+
+static void test_eval_interleaved(void)
+{
+    printf("test_eval_interleaved:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_INTERLEAVED, &gf);
+    check("parses OK", rc == 0);
+    check("3 deps", gf.n_deps == 3);
+    check("dep[0] = rspec", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "rspec") == 0);
+    check("rspec group=test", gf.n_deps > 0 && gf.deps[0].group &&
+          strcmp(gf.deps[0].group, "test") == 0);
+    check("dep[1] = minitest", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "minitest") == 0);
+    check("dep[2] = sinatra", gf.n_deps > 2 &&
+          strcmp(gf.deps[2].name, "sinatra") == 0);
+    check("sinatra no group", gf.n_deps > 2 && gf.deps[2].group == NULL);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: if inside suppressed scope → properly tracked ────────── */
+
+static const char EVAL_SUPPRESSED_NESTED[] =
+    "source \"https://rubygems.org\"\n"
+    "if false\n"
+    "  if true\n"
+    "    gem \"deep-inside\"\n"
+    "  end\n"
+    "  gem \"inside\"\n"
+    "end\n"
+    "gem \"outside\"\n";
+
+static void test_eval_suppressed_nested(void)
+{
+    printf("test_eval_suppressed_nested:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_SUPPRESSED_NESTED, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = outside", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "outside") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: ! (not) operator ─────────────────────────────────────── */
+
+static const char EVAL_BANG[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"negated\" if !false\n"
+    "gem \"double\" if !true\n";
+
+static void test_eval_bang(void)
+{
+    printf("test_eval_bang:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_BANG, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = negated", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "negated") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: version_compare utility ──────────────────────────────── */
+
+static void test_version_compare(void)
+{
+    printf("test_version_compare:\n");
+    check("3.3.0 == 3.3.0", wow_version_compare("3.3.0", "3.3.0") == 0);
+    check("3.3.0 > 3.2.0", wow_version_compare("3.3.0", "3.2.0") > 0);
+    check("3.3.0 < 3.4.0", wow_version_compare("3.3.0", "3.4.0") < 0);
+    check("3.10.0 > 3.9.0", wow_version_compare("3.10.0", "3.9.0") > 0);
+    check("2.0 < 10.0", wow_version_compare("2.0", "10.0") < 0);
+    check("1.0.0 < 1.0.1", wow_version_compare("1.0.0", "1.0.1") < 0);
+    check("1.0 == 1.0.0", wow_version_compare("1.0", "1.0.0") == 0);
+}
+
+/* ── Test: eval_gemfile with missing file → silently skipped ────── */
+
+static const char EVAL_GEMFILE_MISSING[] =
+    "source \"https://rubygems.org\"\n"
+    "eval_gemfile \"nonexistent_file_12345.rb\"\n"
+    "gem \"sinatra\"\n";
+
+static void test_eval_gemfile_missing(void)
+{
+    printf("test_eval_gemfile_missing:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_GEMFILE_MISSING, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = sinatra", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "sinatra") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: string interpolation with variable ───────────────────── */
+
+static const char EVAL_INTERPOLATION[] =
+    "source \"https://rubygems.org\"\n"
+    "ver = \"5.0\"\n"
+    "gem \"rails\", \"~> #{ver}\"\n";
+
+static void test_eval_interpolation(void)
+{
+    printf("test_eval_interpolation:\n");
+    struct wow_gemfile gf;
+    int rc = parse(EVAL_INTERPOLATION, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = rails", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "rails") == 0);
+    check("constraint ~> 5.0", gf.n_deps > 0 &&
+          gf.deps[0].n_constraints > 0 &&
+          strcmp(gf.deps[0].constraints[0], "~> 5.0") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: if RUBY_VERSION (real-world pattern from corpus) ─────── */
+
+static const char EVAL_REALWORLD[] =
+    "source \"https://rubygems.org\"\n"
+    "gemspec\n"
+    "gem \"rake\"\n"
+    "group :development do\n"
+    "  gem \"pry\"\n"
+    "  gem \"byebug\" if RUBY_VERSION >= \"2.0\" && RUBY_VERSION < \"4.0\"\n"
+    "end\n"
+    "gem \"simplecov\", require: false unless ENV[\"WOW_TEST_NO_COV\"]\n";
+
+static void test_eval_realworld(void)
+{
+    printf("test_eval_realworld:\n");
+    struct wow_gemfile gf;
+
+    unsetenv("WOW_TEST_NO_COV");
+    int rc = parse(EVAL_REALWORLD, &gf);
+
+    check("parses OK", rc == 0);
+    check("has_gemspec", gf.has_gemspec == true);
+    check("4 deps", gf.n_deps == 4);
+    check("dep[0] = rake", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "rake") == 0);
+    check("dep[1] = pry", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "pry") == 0);
+    check("dep[2] = byebug", gf.n_deps > 2 &&
+          strcmp(gf.deps[2].name, "byebug") == 0);
+    check("byebug group=development", gf.n_deps > 2 && gf.deps[2].group &&
+          strcmp(gf.deps[2].group, "development") == 0);
+    check("dep[3] = simplecov", gf.n_deps > 3 &&
+          strcmp(gf.deps[3].name, "simplecov") == 0);
+    check("simplecov require=false", gf.n_deps > 3 &&
+          gf.deps[3].require == false);
+    wow_gemfile_free(&gf);
+}
+
 /* ── Main ───────────────────────────────────────────────────────── */
 
 int main(void)
@@ -810,6 +1389,32 @@ int main(void)
     test_block_comment();
     test_groups_plural();
     test_nested_blocks();
+
+    /* Evaluator tests (Phase 5b) */
+    test_eval_if_true();
+    test_eval_if_false();
+    test_eval_unless();
+    test_eval_elsif();
+    test_eval_else();
+    test_eval_nested_if();
+    test_eval_trailing_if_true();
+    test_eval_trailing_if_false();
+    test_eval_trailing_unless();
+    test_eval_env_exists();
+    test_eval_env_missing();
+    test_eval_env_eq();
+    test_eval_ruby_version_cmp();
+    test_eval_variable_assign();
+    test_eval_variable_env();
+    test_eval_gem_version();
+    test_eval_and_or();
+    test_eval_interleaved();
+    test_eval_suppressed_nested();
+    test_eval_bang();
+    test_version_compare();
+    test_eval_gemfile_missing();
+    test_eval_interpolation();
+    test_eval_realworld();
 
     printf("\n=== Results: %d passed, %d failed ===\n", n_pass, n_fail);
     return n_fail > 0 ? 1 : 0;

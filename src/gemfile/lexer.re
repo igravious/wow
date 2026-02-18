@@ -237,15 +237,19 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
                 return skip_git_source_block(lex, token);
             }
 
+            /* Evaluator keywords (promoted from UNSUPPORTED for Phase 5b) */
+            "if"            { token->length = 2;  return IF; }
+            "unless"        { token->length = 6;  return UNLESS; }
+            "else"          { token->length = 4;  return ELSE; }
+            "elsif"         { token->length = 5;  return ELSIF; }
+            "eval_gemfile"  { token->length = 12; return EVAL_GEMFILE; }
+
             /* Unsupported Ruby constructs -- detected early for clean errors */
-            "if"            { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
-            "unless"        { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
-            "else"          { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
-            "elsif"         { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
             "case"          { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
             "when"          { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
             "eval"          { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
-            "eval_gemfile"  { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
+            "def"           { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
+            "require"       { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
 
             /* Percent-literal arrays: %i[...] or %w[...] */
             "%i[" [^\]\x00]* "]"  {
@@ -255,6 +259,16 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
             "%w[" [^\]\x00]* "]"  {
                 token->length = (int)(lex->cursor - lex->tok);
                 return PERCENT_ARRAY;
+            }
+
+            /* Numeric literals */
+            [0-9]+ "." [0-9]+  {
+                token->length = (int)(lex->cursor - lex->tok);
+                return FLOAT_LIT;
+            }
+            [0-9]+  {
+                token->length = (int)(lex->cursor - lex->tok);
+                return INTEGER;
             }
 
             /* Double-quoted string */
@@ -275,8 +289,8 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
                 return SYMBOL;
             }
 
-            /* Keyword argument key: identifier followed by colon */
-            [a-zA-Z_][a-zA-Z0-9_]* ":"  {
+            /* Keyword argument key: identifier followed by colon (but NOT ::) */
+            [a-zA-Z_][a-zA-Z0-9_]* ":" / [^:]  {
                 token->length = (int)(lex->cursor - lex->tok);
                 return KEY;
             }
@@ -287,9 +301,26 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
                 return IDENT;
             }
 
-            /* Punctuation */
-            ","   { token->length = 1; return COMMA; }
+            /* Multi-character operators (longest-match over single-char) */
             "=>"  { token->length = 2; return HASHROCKET; }
+            "=="  { token->length = 2; return EQ; }
+            "!="  { token->length = 2; return NEQ; }
+            ">="  { token->length = 2; return GTE; }
+            "<="  { token->length = 2; return LTE; }
+            "=~"  { token->length = 2; return MATCH; }
+            "&&"  { token->length = 2; return AND; }
+            "||"  { token->length = 2; return OR; }
+            "::"  { token->length = 2; return COLON_COLON; }
+
+            /* Single-character operators and punctuation */
+            ","   { token->length = 1; return COMMA; }
+            ">"   { token->length = 1; return GT; }
+            "<"   { token->length = 1; return LT; }
+            "!"   { token->length = 1; return BANG; }
+            "="   { token->length = 1; return ASSIGN; }
+            "."   { token->length = 1; return DOT; }
+            "|"   { token->length = 1; return PIPE; }
+            "?"   { token->length = 1; return QUESTION; }
             "["   { token->length = 1; return LBRACKET; }
             "]"   { token->length = 1; return RBRACKET; }
             "("   { token->length = 1; return LPAREN; }
