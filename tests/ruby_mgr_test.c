@@ -422,7 +422,7 @@ static void test_tar_corrupted(void) {
 /* ── main ────────────────────────────────────────────────────── */
 
 int main(void) {
-    printf("=== wow ruby manager tests ===\n");
+    printf("=== wow rubies manager tests ===\n");
 
     /* Platform + directory tests */
     test_platform_detection();

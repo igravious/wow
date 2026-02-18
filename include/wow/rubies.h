@@ -6,6 +6,9 @@
  * This is a convenience header that includes all rubies submodules.
  */
 
+#include "wow/rubies/impl.h"
+#include "wow/rubies/deffile.h"
+#include "wow/rubies/definitions.h"
 #include "wow/rubies/resolve.h"
 #include "wow/rubies/install.h"
 #include "wow/rubies/shims.h"

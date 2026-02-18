@@ -88,19 +88,21 @@ void wow_detect_platform(wow_platform_t *p)
 
 const char *wow_ruby_builder_platform(const wow_platform_t *p)
 {
+    /* Platform strings must match ruby-builder definition file entries
+     * (e.g. "ubuntu-22.04-x64", "darwin-arm64"). */
     if (strcmp(p->os, "linux") == 0 && strcmp(p->arch, "x86_64") == 0
         && strcmp(p->libc, "gnu") == 0)
-        return "ubuntu-22.04";
+        return "ubuntu-22.04-x64";
 
     if (strcmp(p->os, "linux") == 0 && strcmp(p->arch, "arm64") == 0
         && strcmp(p->libc, "gnu") == 0)
         return "ubuntu-22.04-arm64";
 
     if (strcmp(p->os, "darwin") == 0 && strcmp(p->arch, "arm64") == 0)
-        return "macos-14-arm64";
+        return "darwin-arm64";
 
     if (strcmp(p->os, "darwin") == 0 && strcmp(p->arch, "x86_64") == 0)
-        return "macos-14-x64";
+        return "darwin-x64";
 
     return NULL;
 }

@@ -8,8 +8,11 @@
 /* Ruby subcommand handler (used by main.c) */
 int cmd_ruby(int argc, char *argv[]);
 
-/* Install a single Ruby version */
+/* Install a single Ruby version (ruby-builder, platform-specific tarball) */
 int wow_ruby_install(const char *version);
+
+/* Install a CosmoRuby version (APE binaries: ruby.com, irb.com) */
+int wow_cosmoruby_install(const char *version);
 
 /* Install multiple Ruby versions in parallel */
 int wow_ruby_install_many(const char **versions, int n);

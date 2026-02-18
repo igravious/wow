@@ -8,7 +8,7 @@ COSMO_SRC ?= /home/groobiest/Code/jart/cosmopolitan
 CC        = $(COSMO)/bin/cosmocc
 AR        = $(COSMO)/bin/cosmoar
 ZIPCOPY   = $(COSMO)/bin/zipcopy
-CFLAGS    = -Wall -Wextra -Werror -O2 -std=c17 -D_COSMO_SOURCE -I$(COSMO_SRC)
+CFLAGS    = -Wall -Wextra -Werror -O2 -std=c17 -D_COSMO_SOURCE -I$(COSMO_SRC) -MMD -MP
 BUILDDIR  = build
 
 # Cosmo source uses -std=gnu23; we use gnu11 + stdbool to match
@@ -31,6 +31,9 @@ SRCS = $(wildcard src/*.c) \
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
        $(BUILDDIR)/cJSON.o
 
+# Auto-generated header dependencies (GCC -MMD -MP writes .d files alongside .o)
+-include $(OBJS:.o=.d)
+
 # Create subdirectories for object files
 OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/util $(BUILDDIR)/internal
 
@@ -52,17 +55,22 @@ LIBYAML_CFLAGS = $(COSMO_CFLAGS) -I$(COSMO_SRC)/third_party/libyaml \
                  -Wno-unused-value
 LIBYAML_LIB  = $(BUILDDIR)/libyaml.a
 
-# --- SSL root certificates (embedded in APE zip) ---
-SSL_ROOTS = $(wildcard $(COSMO_SRC)/usr/share/ssl/root/*.pem)
-SSL_ZIP   = $(BUILDDIR)/ssl-roots.zip
+# --- APE zip assets (single zip — zipcopy only supports one call per binary) ---
+SSL_ROOTS        = $(wildcard $(COSMO_SRC)/usr/share/ssl/root/*.pem)
+RUBY_BINARY_DEFS = vendor/ruby-binary/share/ruby-binary/repos
+ASSETS_ZIP       = $(BUILDDIR)/assets.zip
 
 # --- build targets ---
-$(BUILDDIR)/wow.com: $(OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP)
+# NB: wow.com MUST be the first target in the Makefile — GNU Make uses the
+# first target as the default goal when you run bare `make`.
+$(BUILDDIR)/wow.com: $(OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
-$(SSL_ZIP): $(SSL_ROOTS) | $(BUILDDIR)
+$(ASSETS_ZIP): $(SSL_ROOTS) $(wildcard $(RUBY_BINARY_DEFS)/ruby-builder/*) $(wildcard $(RUBY_BINARY_DEFS)/cosmoruby/*) | $(BUILDDIR)
 	cd $(COSMO_SRC) && zip -q $(CURDIR)/$@ usr/share/ssl/root/*.pem
+	cd $(RUBY_BINARY_DEFS) && zip -q $(CURDIR)/$@ ruby-builder/* cosmoruby/* 2>/dev/null || \
+	cd $(RUBY_BINARY_DEFS) && zip -q $(CURDIR)/$@ ruby-builder/*
 
 # Pattern rules for source subdirectories
 $(BUILDDIR)/%.o: src/%.c | $(BUILDDIR)
@@ -146,17 +154,17 @@ $(BUILDDIR)/libyaml: | $(BUILDDIR)
 # --- Tests ---
 TEST_HTTP_OBJS = $(filter-out $(BUILDDIR)/main.o,$(OBJS))
 
-$(BUILDDIR)/tls_test.com: tests/tls_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+$(BUILDDIR)/tls_test.com: tests/tls_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
-$(BUILDDIR)/registry_test.com: tests/registry_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+$(BUILDDIR)/registry_test.com: tests/registry_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
-$(BUILDDIR)/ruby_mgr_test.com: tests/ruby_mgr_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+$(BUILDDIR)/ruby_mgr_test.com: tests/ruby_mgr_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
 test-tls: $(BUILDDIR)/tls_test.com
 	$(BUILDDIR)/tls_test.com
@@ -167,16 +175,16 @@ test-registry: $(BUILDDIR)/registry_test.com
 test-ruby-mgr: $(BUILDDIR)/ruby_mgr_test.com
 	$(BUILDDIR)/ruby_mgr_test.com
 
-$(BUILDDIR)/gem_test.com: tests/gem_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+$(BUILDDIR)/gem_test.com: tests/gem_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -I$(COSMO_SRC)/third_party/libyaml -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
 test-gem: $(BUILDDIR)/gem_test.com
 	$(BUILDDIR)/gem_test.com
 
-$(BUILDDIR)/gemfile_test.com: tests/gemfile_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(SSL_ZIP) | $(BUILDDIR)
+$(BUILDDIR)/gemfile_test.com: tests/gemfile_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Isrc/gemfile -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
-	$(ZIPCOPY) $(SSL_ZIP) $@
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
 test-gemfile: $(BUILDDIR)/gemfile_test.com
 	$(BUILDDIR)/gemfile_test.com
@@ -187,6 +195,24 @@ test: test-tls test-registry test-ruby-mgr test-gem test-gemfile
 generate-gemfile-parser:
 	lemon src/gemfile/parser.y
 	re2c -o src/gemfile/lexer.c src/gemfile/lexer.re --no-debug-info
+
+# --- Corpus pipeline ---
+.PHONY: corpus-seed corpus-enrich corpus-download corpus-test corpus-report
+
+corpus-seed:
+	cd lode && bash seed.sh
+
+corpus-enrich:
+	cd lode && bash enrich.sh
+
+corpus-download:
+	cd lode && bash download.sh
+
+corpus-test: $(BUILDDIR)/wow.com
+	cd lode && WOW=$(CURDIR)/$(BUILDDIR)/wow.com bash test.sh
+
+corpus-report:
+	cd lode && bash report.sh
 
 clean:
 	rm -rf $(BUILDDIR)
