@@ -50,13 +50,14 @@ static char *read_file(const char *path, int *out_len)
         return NULL;
     }
 
-    char *buf = malloc((size_t)sz + 1);
+    char *buf = malloc((size_t)sz + 2);
     if (!buf) { fclose(f); return NULL; }
     fread(buf, 1, (size_t)sz, f);
-    buf[sz] = '\0';  /* null sentinel for re2c */
+    buf[sz]     = '\n';  /* ensure trailing newline */
+    buf[sz + 1] = '\0';  /* null sentinel for re2c */
     fclose(f);
 
-    *out_len = (int)sz;
+    *out_len = (int)sz + 1;
     return buf;
 }
 
