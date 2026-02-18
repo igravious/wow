@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "wow/http.h"
 #include "wow/internal/util.h"
@@ -16,7 +17,7 @@
 /* External verbose flag from http.c */
 extern int wow_http_debug;
 
-#define WOW_VERSION "0.1.0"
+#include "wow/version.h"
 
 typedef int (*cmd_fn)(int argc, char *argv[]);
 
@@ -28,7 +29,7 @@ static int cmd_stub(int argc, char *argv[]) {
 
 static int cmd_fetch(int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "usage: wow fetch <url>\n");
+        fprintf(stderr, "usage: wow curl <url>\n");
         return 1;
     }
     struct wow_response resp;
@@ -69,12 +70,12 @@ static int cmd_gem_info(int argc, char *argv[]) {
 }
 
 static int cmd_bench_pool(int argc, char *argv[]) {
-    if (argc < 3) {
-        fprintf(stderr, "usage: wow bench-pool <url> <count>\n");
+    if (argc < 2) {
+        fprintf(stderr, "usage: wow debug bench-pool <url> [count]\n");
         return 1;
     }
     const char *url = argv[1];
-    int count = atoi(argv[2]);
+    int count = (argc > 2) ? atoi(argv[2]) : 5;
     if (count <= 0) count = 5;
 
     /* Benchmark without pool (new connection each time) */
@@ -116,6 +117,42 @@ static int cmd_bench_pool(int argc, char *argv[]) {
     return 0;
 }
 
+static int cmd_debug_gemfile_lex(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "usage: wow debug gemfile-lex <Gemfile>\n");
+        return 1;
+    }
+    return wow_gemfile_lex_file(argv[1]) == 0 ? 0 : 1;
+}
+
+static void print_debug_usage(void) {
+    printf("wow debug — Developer/debugging commands\n\n");
+    printf("Usage: wow debug <subcommand> [args...]\n\n");
+    printf("Subcommands:\n");
+    printf("  bench-pool     Benchmark HTTP pool vs no-pool\n");
+    printf("  gemfile-lex    Lex a Gemfile (tokenizer output)\n");
+}
+
+static int cmd_debug(int argc, char *argv[]) {
+    if (argc < 2) {
+        print_debug_usage();
+        return 1;
+    }
+    
+    const char *subcmd = argv[1];
+    
+    if (strcmp(subcmd, "bench-pool") == 0) {
+        return cmd_bench_pool(argc - 1, argv + 1);
+    }
+    if (strcmp(subcmd, "gemfile-lex") == 0) {
+        return cmd_debug_gemfile_lex(argc - 1, argv + 1);
+    }
+    
+    fprintf(stderr, "unknown debug subcommand: %s\n\n", subcmd);
+    print_debug_usage();
+    return 1;
+}
+
 static const struct {
     const char *name;
     const char *description;
@@ -127,32 +164,45 @@ static const struct {
     { "add",    "Add a gem to Gemfile",           cmd_stub },
     { "remove", "Remove a gem from Gemfile",      cmd_stub },
     { "run",    "Run a command with bundled gems", cmd_stub },
-    { "ruby",   "Manage Ruby installations",      cmd_ruby },
+    { "rubies", "Manage Ruby installations",      cmd_ruby },
     { "bundle", "Bundler compatibility shim",     cmd_stub },
-    { "fetch",    "Fetch a URL (debug)",           cmd_fetch },
+    { "curl",   "Fetch a URL (HTTP client)",      cmd_fetch },
     { "gem-info",    "Show gem info from rubygems",   cmd_gem_info },
-    { "bench-pool",  "Benchmark pool vs no-pool",    cmd_bench_pool },
     { "gem-download", "Download a .gem file",          cmd_gem_download },
     { "gem-list",    "List .gem contents",           cmd_gem_list },
     { "gem-meta",    "Show .gem metadata",           cmd_gem_meta },
     { "gem-unpack",  "Unpack .gem to directory",     cmd_gem_unpack },
-    { "gemfile-lex",   "Lex a Gemfile (debug)",      cmd_gemfile_lex },
     { "gemfile-parse", "Parse a Gemfile",             cmd_gemfile_parse },
     { "gemfile-deps",  "List Gemfile dependencies",   cmd_gemfile_deps },
+    { "debug",  "Developer/debugging tools",      cmd_debug },
 };
 
 #define N_COMMANDS (sizeof(commands) / sizeof(commands[0]))
+
+static int is_debug_enabled(void) {
+    const char *debug = getenv("WOW_DEBUG");
+    return debug && (strcmp(debug, "1") == 0 || 
+                     strcmp(debug, "true") == 0 ||
+                     strcmp(debug, "yes") == 0);
+}
 
 static void print_usage(void) {
     printf("wow %s — a portable Ruby project manager\n\n", WOW_VERSION);
     printf("Usage: wow <command> [args...]\n\n");
     printf("Commands:\n");
-    for (size_t i = 0; i < N_COMMANDS; i++)
+    for (size_t i = 0; i < N_COMMANDS; i++) {
+        /* Skip debug command unless WOW_DEBUG is set */
+        if (strcmp(commands[i].name, "debug") == 0 && !is_debug_enabled())
+            continue;
         printf("  %-10s %s\n", commands[i].name, commands[i].description);
+    }
     printf("\nOptions:\n");
     printf("  --help, -h       Show this help\n");
     printf("  --version, -V    Show version\n");
     printf("  --verbose, -v    Enable verbose HTTP debugging\n");
+    if (is_debug_enabled()) {
+        printf("\nDebug: WOW_DEBUG is enabled. Run 'wow debug' for developer tools.\n");
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -200,7 +250,7 @@ int main(int argc, char *argv[]) {
 
         if (access(bin_path, X_OK) != 0) {
             fprintf(stderr, "wow: Ruby %s not installed "
-                    "(run: wow ruby install %s)\n", version, version);
+                    "(run: wow rubies install %s)\n", version, version);
             return 1;
         }
 
