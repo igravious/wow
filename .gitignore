@@ -22,6 +22,9 @@ tmp/
 # Corpus test data (snarfed from RubyGems/GitHub)
 snarf/
 
+# Corpus pipeline (scripts protected via vendor/ruby-binary/; data excluded)
+lode/
+
 # Scratch scripts
 gem_matrix.sh
 sanity_check.sh

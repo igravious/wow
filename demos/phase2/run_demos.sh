@@ -59,8 +59,8 @@ echo "================================================================"
 echo " Demo 2d: wow.com built-in subcommands"
 echo "================================================================"
 echo ""
-echo "$ wow fetch https://rubygems.org/api/v1/gems/puma.json | head -c 200"
-../../build/wow.com fetch https://rubygems.org/api/v1/gems/puma.json | head -c 200
+echo "$ wow curl https://rubygems.org/api/v1/gems/puma.json | head -c 200"
+../../build/wow.com curl https://rubygems.org/api/v1/gems/puma.json | head -c 200
 echo ""
 echo "  ... (truncated)"
 echo ""
