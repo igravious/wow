@@ -34,6 +34,7 @@
 
 #include "wow/http/client.h"
 #include "wow/http/pool.h"
+#include "wow/version.h"
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)
@@ -254,7 +255,7 @@ static int pool_do_get(struct wow_pool_entry *e, const char *path,
     appendf(&request,
             "GET %s HTTP/1.1\r\n"
             "Host: %s:%s\r\n"
-            "User-Agent: wow/0.1.0\r\n"
+            "User-Agent: wow/" WOW_VERSION "\r\n"
             "Connection: keep-alive\r\n"
             "\r\n",
             path, e->host, e->port);

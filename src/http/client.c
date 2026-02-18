@@ -25,6 +25,7 @@
 #include "third_party/musl/netdb.h"
 
 #include "wow/http/client.h"
+#include "wow/version.h"
 
 /* Global verbose flag for HTTP debugging (set by --verbose or -v) */
 int wow_http_debug = 0;
@@ -159,7 +160,7 @@ static int do_get(const char *host, const char *port, int usessl,
     appendf(&request,
             "GET %s HTTP/1.1\r\n"
             "Host: %s:%s\r\n"
-            "User-Agent: wow/0.1.0\r\n"
+            "User-Agent: wow/" WOW_VERSION "\r\n"
             "Connection: close\r\n"
             "\r\n",
             path, host, port);
@@ -597,7 +598,7 @@ static int do_get_to_fd(const char *host, const char *port, int usessl,
     appendf(&request,
             "GET %s HTTP/1.1\r\n"
             "Host: %s:%s\r\n"
-            "User-Agent: wow/0.1.0\r\n"
+            "User-Agent: wow/" WOW_VERSION "\r\n"
             "Connection: close\r\n"
             "\r\n",
             path, host, port);
