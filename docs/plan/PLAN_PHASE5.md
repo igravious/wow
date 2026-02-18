@@ -4,7 +4,7 @@
 
 ## 5a: re2c Lexer — Tokenise a Gemfile
 
-**Demo:** `./wow.com gemfile-lex Gemfile` prints token stream.
+**Demo:** `./wow.com debug gemfile-lex Gemfile` prints token stream.
 
 **Files:**
 - `src/gemfile.l.re2c` (re2c input)
@@ -38,7 +38,7 @@ TOKEN_ERROR      (anything unexpected → clean error with line number)
 
 **Verify:**
 ```bash
-./build/wow.com gemfile-lex Gemfile
+./build/wow.com debug gemfile-lex Gemfile
 # 1: TOKEN_COMMENT   "# frozen_string_literal: true"
 # 3: TOKEN_SOURCE    "source"
 # 3: TOKEN_STRING    "https://rubygems.org"

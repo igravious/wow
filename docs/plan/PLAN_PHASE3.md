@@ -16,7 +16,7 @@ All sub-phases implemented and tested.
 | `src/rubies/install_many.c` | Parallel multi-version install via bounded-concurrency worker pool |
 | `src/rubies/uninstall.c` | Remove an installed Ruby version |
 | `src/rubies/list.c` | List installed Ruby versions, mark active |
-| `src/rubies/cmd.c` | `wow ruby` subcommand dispatch |
+| `src/rubies/cmd.c` | `wow rubies` subcommand dispatch |
 | `src/rubies/shims.c` | Create symlink shims for ruby, irb, gem, etc. |
 | `src/rubies/internal.c` | Shared internal helpers (mkdirs, colour, timing) |
 | `src/tar.c` | Streaming tar.gz extraction with security hardening |
@@ -41,7 +41,7 @@ Umbrella headers: `include/wow/rubies.h`, `include/wow/download.h`
 
 `ruby-3.3` symlink points to `ruby-3.3.6-{platform}`.
 
-## 3c: wow ruby list — DONE
+## 3c: wow rubies list — DONE
 
 `./wow.com ruby list` scans `~/.local/share/wow/ruby/` and prints installed versions, marking the active one from nearest `.ruby-version`.
 

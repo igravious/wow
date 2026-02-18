@@ -1,6 +1,6 @@
 # wow — Progress Checkpoint
 
-> Last updated: 2026-02-17
+> Last updated: 2026-02-18
 
 ## Phase 0: Research — COMPLETE
 
@@ -78,7 +78,7 @@ Phase 7 (parallel downloads) was pulled forward and merged into Phase 3, since t
 |-----------|------|--------|
 | **3a** | Download pre-built Ruby from ruby-builder | Done |
 | **3b** | Minor-version symlink (`ruby-4.0` → `ruby-4.0.1`) | Done |
-| **3c** | `wow ruby list` — list installed Rubies | Done |
+| **3c** | `wow rubies list` — list installed Rubies | Done |
 | **3d** | `wow init` eagerly downloads Ruby | Done |
 | **3e** | Shims (argv[0] dispatch via symlinks to wow.com) | Done |
 | **7→3** | Parallel download infrastructure (worker pool + multibar) | Done |
@@ -92,7 +92,7 @@ Phase 7 (parallel downloads) was pulled forward and merged into Phase 3, since t
 | `src/rubies/install_many.c` | Parallel multi-version install via bounded-concurrency worker pool |
 | `src/rubies/uninstall.c` | Remove an installed Ruby version |
 | `src/rubies/list.c` | List installed Ruby versions |
-| `src/rubies/cmd.c` | `wow ruby` subcommand dispatch |
+| `src/rubies/cmd.c` | `wow rubies` subcommand dispatch |
 | `src/rubies/shims.c` | Create shims (symlinks to wow.com) for ruby, irb, gem, etc. |
 | `src/rubies/internal.c` | Shared internal helpers (mkdirs, colour, timing) |
 | `src/tar.c` | Streaming tar.gz extraction with security hardening |
@@ -125,16 +125,54 @@ Phase 7 (parallel downloads) was pulled forward and merged into Phase 3, since t
 |------|--------|
 | `tests/ruby_mgr_test.c` | Platform detection, directory helpers, .ruby-version resolution, tar security (path traversal, symlink escape, corruption) |
 
-## Phases 4–8: NOT STARTED
+## Phase 4: .gem Unpack — COMPLETE
 
-Phase 7 was merged into Phase 3. Remaining phases:
+| Sub-phase | What | Status |
+|-----------|------|--------|
+| **4a** | Download .gem from rubygems.org | Done |
+| **4b** | Parse .gem metadata (YAML via libyaml) | Done |
+| **4c** | Unpack .gem contents (tar.gz extraction) | Done |
+
+### Files added
+
+| File | Purpose |
+|------|---------|
+| `src/gems/download.c` | Download .gem files from rubygems.org |
+| `src/gems/meta.c` | Parse gem metadata.yaml via libyaml |
+| `src/gems/unpack.c` | Extract data.tar.gz and metadata.gz from .gem |
+| `src/gems/list.c` | List contents of a .gem archive |
+
+## Phase 5: Gemfile Parser — IN PROGRESS
+
+| Sub-phase | What | Status |
+|-----------|------|--------|
+| **5a** | Lexer (re2c) + Parser (lemon) — Tier 1/2 | Done |
+| **5b** | Evaluator (if/unless/ENV/variables) | Done |
+| **5c** | case/when, advanced Ruby | Not started |
+
+### Files added
+
+| File | Purpose |
+|------|---------|
+| `src/gemfile/lexer.re` | re2c tokenizer for Ruby syntax |
+| `src/gemfile/parser.y` | Lemon grammar for Gemfile DSL |
+| `src/gemfile/eval.c` | Expression evaluator for conditionals |
+| `src/gemfile/glue.c` | Parser glue + public API |
+| `src/gemfile/types.c` | AST types and memory management |
+
+### Status
+- 212 tests passing
+- 92% corpus pass rate (2,586/2,812 real-world Gemfiles)
+- Supports: if/unless/elsif/else, ENV[], variables, RUBY_VERSION, Gem::Version
+
+## Phases 6–8: NOT STARTED
 
 | Phase | What | Status |
 |-------|------|--------|
-| 4 | .gem unpack (tar + gzip) | Not started |
-| 5 | Gemfile parser (re2c + lemon) | Not started |
 | 6 | PubGrub dependency resolver | Not started |
 | 8 | End-to-end `wow sync` | Not started |
+
+Phase 7 was merged into Phase 3 (parallel downloads).
 
 See `docs/plan/PLAN_PHASE{4..8}.md`.
 
@@ -151,7 +189,7 @@ a7ed1f0 Rename CLAUDE.md to .ai-instructions.md, add symlinks and uv reference
 2d194ef Add CLAUDE.md project documentation
 f309d8a Restructure demos: move phase0 to subdirectory, add phase2 demos
 66c1fdd Add TLS and registry tests
-008100a Add rubygems.org registry client, fetch/gem-info/bench-pool subcommands
+008100a Add rubygems.org registry client, curl/gem-info/debug bench-pool subcommands
 4bf8a2c Add native HTTPS client with connection pool
 dcb6e4b Add configure script, out-of-tree mbedTLS build, vendor cJSON
 eff0b3d Phase 1: skeleton build system + subcommand dispatch + wow init

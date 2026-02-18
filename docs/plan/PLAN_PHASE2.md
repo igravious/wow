@@ -4,7 +4,7 @@
 
 ## 2a: HTTP GET
 
-**Demo:** `./wow.com fetch http://example.com` prints raw HTTP response.
+**Demo:** `./wow.com curl http://example.com` prints raw HTTP response.
 
 **Files:**
 - `src/http.c`
@@ -17,13 +17,13 @@
 - Handle `Content-Length` and `Transfer-Encoding: chunked`
 - Print raw response to stdout
 
-This is a temporary `fetch` subcommand for testing — removed later.
+This is a temporary `curl` subcommand for testing — removed later.
 
-**Verify:** `./build/wow.com fetch http://example.com` → prints HTML
+**Verify:** `./build/wow.com curl http://example.com` → prints HTML
 
 ## 2b: HTTPS GET (mbedTLS)
 
-**Demo:** `./wow.com fetch https://rubygems.org/api/v1/gems/sinatra.json` prints JSON.
+**Demo:** `./wow.com curl https://rubygems.org/api/v1/gems/sinatra.json` prints JSON.
 
 **Changes to http.c:**
 - Detect `https://` scheme
@@ -32,7 +32,7 @@ This is a temporary `fetch` subcommand for testing — removed later.
 - TLS read/write wrappers
 - Handle HTTP redirects (301, 302) — rubygems.org uses them
 
-**Verify:** `./build/wow.com fetch https://rubygems.org/api/v1/gems/sinatra.json` → prints JSON blob
+**Verify:** `./build/wow.com curl https://rubygems.org/api/v1/gems/sinatra.json` → prints JSON blob
 
 ## 2c: JSON Parsing + Pretty Print
 

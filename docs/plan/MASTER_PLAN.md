@@ -46,9 +46,9 @@ wow remove <gem>            ↔ uv remove       # remove from Gemfile + sync
 wow run <cmd>               ↔ uv run          # run with correct Ruby + GEM_PATH
 
 # Ruby management
-wow ruby install [version]  ↔ uv python install
-wow ruby list               ↔ uv python list
-wow ruby pin <version>      ↔ uv python pin   # writes .ruby-version
+wow rubies install [version]  ↔ uv python install
+wow rubies list               ↔ uv python list
+wow rubies pin <version>      ↔ uv python pin   # writes .ruby-version
 
 # Tools (global gem executables)
 wow tool install <gem>      ↔ uv tool install
@@ -190,7 +190,7 @@ Code/wow/
 │   │   ├── parallel.c      # Bounded-concurrency worker pool
 │   │   └── progress.c      # Single-download progress bar
 │   ├── rubies/
-│   │   ├── cmd.c           # wow ruby subcommand dispatch
+│   │   ├── cmd.c           # wow rubies subcommand dispatch
 │   │   ├── resolve.c       # Platform detection, version resolution
 │   │   ├── install.c       # Download + extract + atomic rename
 │   │   ├── install_many.c  # Parallel multi-version install

@@ -2,9 +2,9 @@
 
 > Download a gem from rubygems.org, inspect its contents, parse gemspec metadata, and unpack to a directory.
 
-## Status: Done
+## Status: COMPLETE
 
-All four sub-phases implemented and tested.
+All sub-phases implemented and tested.
 
 ## 4a: Download a .gem File
 
