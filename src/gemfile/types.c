@@ -17,6 +17,9 @@ void wow_gemfile_free(struct wow_gemfile *gf)
     free(gf->source);
     free(gf->ruby_version);
     free(gf->_current_group);
+    for (int i = 0; i < gf->_n_current_platforms; i++)
+        free(gf->_current_platforms[i]);
+    free(gf->_current_platforms);
 
     for (size_t i = 0; i < gf->n_deps; i++) {
         struct wow_gemfile_dep *d = &gf->deps[i];
@@ -24,7 +27,15 @@ void wow_gemfile_free(struct wow_gemfile *gf)
         for (int j = 0; j < d->n_constraints; j++)
             free(d->constraints[j]);
         free(d->constraints);
-        free(d->group);
+        for (int j = 0; j < d->n_groups; j++)
+            free(d->groups[j]);
+        free(d->groups);
+        for (int j = 0; j < d->n_autorequire; j++)
+            free(d->autorequire[j]);
+        free(d->autorequire);
+        for (int j = 0; j < d->n_platforms; j++)
+            free(d->platforms[j]);
+        free(d->platforms);
     }
     free(gf->deps);
 

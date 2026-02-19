@@ -15,23 +15,30 @@
 
 /* A single dependency from a Gemfile gem declaration */
 struct wow_gemfile_dep {
-    char  *name;            /* "sinatra"                            */
-    char **constraints;     /* ["~> 4.0", ">= 1.0"] -- opaque strs */
+    char  *name;               /* "sinatra"                                 */
+    char **constraints;        /* ["~> 4.0", ">= 1.0"] -- opaque strs      */
     int    n_constraints;
-    char  *group;           /* "development" / "test" / NULL        */
-    bool   require;         /* false when require: false             */
+    char **groups;             /* ["default"], ["development", "test"]     */
+    int    n_groups;
+    char **autorequire;        /* NULL=unspecified, []=require:false, [...]=paths */
+    int    n_autorequire;
+    bool   autorequire_specified;  /* true if require: was explicitly set   */
+    char **platforms;          /* ["mri"], ["jruby"], etc.                  */
+    int    n_platforms;
 };
 
 /* Parsed Gemfile */
 struct wow_gemfile {
-    char  *source;          /* "https://rubygems.org"               */
-    char  *ruby_version;    /* "3.3.0" or NULL                      */
+    char  *source;           /* "https://rubygems.org"                  */
+    char  *ruby_version;     /* "3.3.0" or NULL                         */
     bool   has_gemspec;
     struct wow_gemfile_dep *deps;
     size_t n_deps;
     /* internal */
-    size_t _deps_cap;
-    char  *_current_group;  /* set during group do...end parsing    */
+    size_t  _deps_cap;
+    char   *_current_group;          /* set during group do...end parsing   */
+    char  **_current_platforms;      /* set during platforms do...end       */
+    int     _n_current_platforms;
 };
 
 /* Initialise a gemfile struct to safe empty state */

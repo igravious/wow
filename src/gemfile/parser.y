@@ -39,14 +39,21 @@ struct gem_opts_acc {
     char **constraints;
     int    n_constraints;
     int    constraints_cap;
-    char  *group;
-    bool   require;
+    char **groups;
+    int    n_groups;
+    int    groups_cap;
+    char **autorequire;
+    int    n_autorequire;
+    int    autorequire_cap;
+    bool   autorequire_specified;
+    char **platforms;
+    int    n_platforms;
+    int    platforms_cap;
 };
 
 static void gem_opts_acc_init(struct gem_opts_acc *a)
 {
     memset(a, 0, sizeof(*a));
-    a->require = true;
 }
 
 static void gem_opts_acc_add_constraint(struct gem_opts_acc *a, char *s)
@@ -59,12 +66,59 @@ static void gem_opts_acc_add_constraint(struct gem_opts_acc *a, char *s)
     a->constraints[a->n_constraints++] = s;
 }
 
+static void gem_opts_acc_add_string(char ***arr, int *n, int *cap, char *s)
+{
+    if (*n >= *cap) {
+        *cap = *cap ? *cap * 2 : 4;
+        *arr = realloc(*arr, sizeof(char *) * (size_t)*cap);
+    }
+    (*arr)[(*n)++] = s;
+}
+
+/*
+ * Parse a %w[...] or %i[...] token into individual whitespace-separated items.
+ * Token format: "%w[foo bar baz]" or "%i[mri windows]" or with () delimiters.
+ * Items are stored in acc->groups[] (generic string array).
+ */
+static void parse_percent_array(struct gem_opts_acc *acc, struct wow_token t)
+{
+    gem_opts_acc_init(acc);
+    /* Skip "%w[" or "%i[" or "%w(" or "%i(" prefix (3 chars)
+     * and trailing "]" or ")" (1 char) */
+    if (t.length < 4) return;
+    const char *p = t.start + 3;
+    const char *end = t.start + t.length - 1;
+    while (p < end) {
+        /* Skip whitespace */
+        while (p < end && (*p == ' ' || *p == '\t' || *p == '\n')) p++;
+        if (p >= end) break;
+        /* Find end of item */
+        const char *item_start = p;
+        while (p < end && *p != ' ' && *p != '\t' && *p != '\n') p++;
+        int len = (int)(p - item_start);
+        if (len > 0) {
+            gem_opts_acc_add_string(&acc->groups, &acc->n_groups,
+                                    &acc->groups_cap,
+                                    strndup(item_start, (size_t)len));
+        }
+    }
+}
+
 static void gem_opts_acc_free(struct gem_opts_acc *a)
 {
-    for (int i = 0; i < a->n_constraints; i++)
+    int i;
+    for (i = 0; i < a->n_constraints; i++)
         free(a->constraints[i]);
     free(a->constraints);
-    free(a->group);
+    for (i = 0; i < a->n_groups; i++)
+        free(a->groups[i]);
+    free(a->groups);
+    for (i = 0; i < a->n_autorequire; i++)
+        free(a->autorequire[i]);
+    free(a->autorequire);
+    for (i = 0; i < a->n_platforms; i++)
+        free(a->platforms[i]);
+    free(a->platforms);
 }
 
 } /* end %include */
@@ -191,19 +245,43 @@ gem_stmt ::= GEM STRING(N) gem_opts(O) . {
     dep.name          = tok_strdup(N, 1, 1);
     dep.constraints   = O.constraints;
     dep.n_constraints = O.n_constraints;
-    dep.require       = O.require;
+    dep.autorequire   = O.autorequire;
+    dep.n_autorequire = O.n_autorequire;
+    dep.autorequire_specified = O.autorequire_specified;
+    dep.platforms     = O.platforms;
+    dep.n_platforms   = O.n_platforms;
 
-    /* group: keyword option takes priority over block group */
-    if (O.group) {
-        dep.group = O.group;
+    /* groups: keyword option takes priority over block context */
+    if (O.n_groups > 0) {
+        dep.groups = O.groups;
+        dep.n_groups = O.n_groups;
     } else if (gf->_current_group) {
-        dep.group = strdup(gf->_current_group);
+        dep.groups = malloc(sizeof(char *));
+        dep.groups[0] = strdup(gf->_current_group);
+        dep.n_groups = 1;
+    } else {
+        dep.groups = malloc(sizeof(char *));
+        dep.groups[0] = strdup("default");
+        dep.n_groups = 1;
+    }
+
+    /* platforms from block context */
+    if (gf->_n_current_platforms > 0 && dep.n_platforms == 0) {
+        dep.platforms = malloc(sizeof(char *) * (size_t)gf->_n_current_platforms);
+        for (int i = 0; i < gf->_n_current_platforms; i++)
+            dep.platforms[i] = strdup(gf->_current_platforms[i]);
+        dep.n_platforms = gf->_n_current_platforms;
     }
 
     /* Prevent gem_opts destructor from freeing transferred pointers */
     O.constraints = NULL;
     O.n_constraints = 0;
-    O.group = NULL;
+    O.groups = NULL;
+    O.n_groups = 0;
+    O.autorequire = NULL;
+    O.n_autorequire = 0;
+    O.platforms = NULL;
+    O.n_platforms = 0;
 
     wow_gemfile_add_dep(gf, &dep);
 }
@@ -215,17 +293,40 @@ gem_stmt ::= GEM LPAREN STRING(N) gem_opts(O) RPAREN . {
     dep.name          = tok_strdup(N, 1, 1);
     dep.constraints   = O.constraints;
     dep.n_constraints = O.n_constraints;
-    dep.require       = O.require;
+    dep.autorequire   = O.autorequire;
+    dep.n_autorequire = O.n_autorequire;
+    dep.autorequire_specified = O.autorequire_specified;
+    dep.platforms     = O.platforms;
+    dep.n_platforms   = O.n_platforms;
 
-    if (O.group) {
-        dep.group = O.group;
+    if (O.n_groups > 0) {
+        dep.groups = O.groups;
+        dep.n_groups = O.n_groups;
     } else if (gf->_current_group) {
-        dep.group = strdup(gf->_current_group);
+        dep.groups = malloc(sizeof(char *));
+        dep.groups[0] = strdup(gf->_current_group);
+        dep.n_groups = 1;
+    } else {
+        dep.groups = malloc(sizeof(char *));
+        dep.groups[0] = strdup("default");
+        dep.n_groups = 1;
+    }
+
+    if (gf->_n_current_platforms > 0 && dep.n_platforms == 0) {
+        dep.platforms = malloc(sizeof(char *) * (size_t)gf->_n_current_platforms);
+        for (int i = 0; i < gf->_n_current_platforms; i++)
+            dep.platforms[i] = strdup(gf->_current_platforms[i]);
+        dep.n_platforms = gf->_n_current_platforms;
     }
 
     O.constraints = NULL;
     O.n_constraints = 0;
-    O.group = NULL;
+    O.groups = NULL;
+    O.n_groups = 0;
+    O.autorequire = NULL;
+    O.n_autorequire = 0;
+    O.platforms = NULL;
+    O.n_platforms = 0;
 
     wow_gemfile_add_dep(gf, &dep);
 }
@@ -245,23 +346,36 @@ gem_opts(R) ::= gem_opts(L) COMMA KEY(K) LIT_FALSE . {
     R = L;
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(K, 0, 1);  /* strip trailing colon */
-    if (strcmp(key, "require") == 0)
-        R.require = false;
+    if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = true;
+        /* require: false → empty autorequire array */
+        R.autorequire = NULL;
+        R.n_autorequire = 0;
+    }
     free(key);
 }
 
 gem_opts(R) ::= gem_opts(L) COMMA KEY(K) LIT_TRUE . {
     R = L;
     memset(&L, 0, sizeof(L));
-    (void)K;  /* require: true is the default */
+    char *key = tok_strdup(K, 0, 1);
+    if (strcmp(key, "require") == 0) {
+        /* require: true → not specified (use default) */
+        R.autorequire_specified = false;
+    }
+    free(key);
 }
 
 gem_opts(R) ::= gem_opts(L) COMMA KEY(K) LIT_NIL . {
     R = L;
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(K, 0, 1);
-    if (strcmp(key, "require") == 0)
-        R.require = false;  /* require: nil == require: false */
+    if (strcmp(key, "require") == 0) {
+        /* require: nil == require: false */
+        R.autorequire_specified = true;
+        R.autorequire = NULL;
+        R.n_autorequire = 0;
+    }
     free(key);
 }
 
@@ -270,22 +384,50 @@ gem_opts(R) ::= gem_opts(L) COMMA KEY(K) SYMBOL(S) . {
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(K, 0, 1);  /* strip trailing colon */
     if (strcmp(key, "group") == 0 || strcmp(key, "groups") == 0) {
-        free(R.group);
-        R.group = tok_strdup(S, 1, 0);  /* strip leading colon */
+        gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                                tok_strdup(S, 1, 0));  /* strip leading colon */
     }
     free(key);
 }
 
-gem_opts(R) ::= gem_opts(L) COMMA KEY STRING . {
+gem_opts(R) ::= gem_opts(L) COMMA KEY(K) STRING(S) . {
     R = L;
     memset(&L, 0, sizeof(L));
-    /* Unknown key with string value -- accept but ignore (path:, git:, etc.) */
+    char *key = tok_strdup(K, 0, 1);
+    if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = true;
+        gem_opts_acc_add_string(&R.autorequire, &R.n_autorequire, &R.autorequire_cap,
+                                tok_strdup(S, 1, 1));
+    }
+    free(key);
 }
 
-gem_opts(R) ::= gem_opts(L) COMMA KEY array . {
+gem_opts(R) ::= gem_opts(L) COMMA KEY(K) typed_array(A) . {
     R = L;
     memset(&L, 0, sizeof(L));
-    /* Key with array value -- accept but ignore (platforms:, groups:, etc.) */
+    char *key = tok_strdup(K, 0, 1);
+    if (strcmp(key, "groups") == 0 || strcmp(key, "group") == 0) {
+        /* Transfer groups from array */
+        for (int i = 0; i < A.n_groups; i++)
+            gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+        A.n_groups = 0;
+    } else if (strcmp(key, "platforms") == 0 || strcmp(key, "platform") == 0) {
+        /* Transfer platforms from array */
+        for (int i = 0; i < A.n_groups; i++)  /* A.groups holds platforms here */
+            gem_opts_acc_add_string(&R.platforms, &R.n_platforms, &R.platforms_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+    } else if (strcmp(key, "require") == 0) {
+        /* Transfer autorequire paths from array */
+        R.autorequire_specified = true;
+        for (int i = 0; i < A.n_groups; i++)
+            gem_opts_acc_add_string(&R.autorequire, &R.n_autorequire, &R.autorequire_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+    }
+    free(key);
 }
 
 /* Hashrocket syntax: :require => false, :group => :development */
@@ -293,23 +435,33 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET LIT_FALSE . {
     R = L;
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(S, 1, 0);  /* strip leading colon */
-    if (strcmp(key, "require") == 0)
-        R.require = false;
+    if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = true;
+        R.autorequire = NULL;
+        R.n_autorequire = 0;
+    }
     free(key);
 }
 
 gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET LIT_TRUE . {
     R = L;
     memset(&L, 0, sizeof(L));
-    (void)S;
+    char *key = tok_strdup(S, 1, 0);
+    if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = false;  /* require: true is default */
+    }
+    free(key);
 }
 
 gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET LIT_NIL . {
     R = L;
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(S, 1, 0);
-    if (strcmp(key, "require") == 0)
-        R.require = false;
+    if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = true;
+        R.autorequire = NULL;
+        R.n_autorequire = 0;
+    }
     free(key);
 }
 
@@ -317,9 +469,9 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET SYMBOL(V) . {
     R = L;
     memset(&L, 0, sizeof(L));
     char *key = tok_strdup(S, 1, 0);
-    if (strcmp(key, "group") == 0) {
-        free(R.group);
-        R.group = tok_strdup(V, 1, 0);
+    if (strcmp(key, "group") == 0 || strcmp(key, "groups") == 0) {
+        gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                                tok_strdup(V, 1, 0));
     }
     free(key);
 }
@@ -330,10 +482,28 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL HASHROCKET STRING . {
     /* Unknown hashrocket key with string value -- ignore */
 }
 
-gem_opts(R) ::= gem_opts(L) COMMA SYMBOL HASHROCKET array . {
+gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET typed_array(A) . {
     R = L;
     memset(&L, 0, sizeof(L));
-    /* Hashrocket key with array value -- accept but ignore */
+    char *key = tok_strdup(S, 1, 0);  /* strip leading colon */
+    if (strcmp(key, "groups") == 0 || strcmp(key, "group") == 0) {
+        for (int i = 0; i < A.n_groups; i++)
+            gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+    } else if (strcmp(key, "platforms") == 0 || strcmp(key, "platform") == 0) {
+        for (int i = 0; i < A.n_groups; i++)
+            gem_opts_acc_add_string(&R.platforms, &R.n_platforms, &R.platforms_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+    } else if (strcmp(key, "require") == 0) {
+        R.autorequire_specified = true;
+        for (int i = 0; i < A.n_groups; i++)
+            gem_opts_acc_add_string(&R.autorequire, &R.n_autorequire, &R.autorequire_cap, A.groups[i]);
+        free(A.groups);
+        A.groups = NULL;
+    }
+    free(key);
 }
 
 /* Variable reference as version arg: gem "x", some_var (unresolvable) */
@@ -375,17 +545,53 @@ string_array_items(R) ::= string_array_items(L) COMMA STRING(S) . {
 }
 
 /* ------------------------------------------------------------------ */
-/* Array literals: [:sym, :sym] and %i[sym sym]                        */
+/* Typed array: captures STRING or SYMBOL values for keyword args      */
 /* ------------------------------------------------------------------ */
 
-array ::= LBRACKET array_items RBRACKET .
-array ::= LBRACKET RBRACKET .
-array ::= PERCENT_ARRAY .
+%type typed_array { struct gem_opts_acc }
+%destructor typed_array { gem_opts_acc_free(&$$); }
 
-array_items ::= SYMBOL .
-array_items ::= STRING .
-array_items ::= array_items COMMA SYMBOL .
-array_items ::= array_items COMMA STRING .
+%type typed_array_items { struct gem_opts_acc }
+%destructor typed_array_items { gem_opts_acc_free(&$$); }
+
+typed_array(R) ::= LBRACKET typed_array_items(A) RBRACKET . {
+    R = A;
+    memset(&A, 0, sizeof(A));
+}
+
+typed_array(R) ::= LBRACKET RBRACKET . {
+    gem_opts_acc_init(&R);
+}
+
+typed_array(R) ::= PERCENT_ARRAY(P) . {
+    parse_percent_array(&R, P);
+}
+
+typed_array_items(R) ::= SYMBOL(S) . {
+    gem_opts_acc_init(&R);
+    gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                            tok_strdup(S, 1, 0));  /* strip leading colon */
+}
+
+typed_array_items(R) ::= STRING(S) . {
+    gem_opts_acc_init(&R);
+    gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                            tok_strdup(S, 1, 1));  /* strip quotes */
+}
+
+typed_array_items(R) ::= typed_array_items(L) COMMA SYMBOL(S) . {
+    R = L;
+    memset(&L, 0, sizeof(L));
+    gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                            tok_strdup(S, 1, 0));
+}
+
+typed_array_items(R) ::= typed_array_items(L) COMMA STRING(S) . {
+    R = L;
+    memset(&L, 0, sizeof(L));
+    gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                            tok_strdup(S, 1, 1));
+}
 
 /* ------------------------------------------------------------------ */
 /* group :development do ... end                                       */
@@ -435,14 +641,31 @@ name_list ::= name_list COMMA KEY SYMBOL .
 /* platform :jruby do ... end                                          */
 /* ------------------------------------------------------------------ */
 
-platforms_open ::= PLATFORMS platform_names DO .
-
-platforms_stmt ::= platforms_open stmts END . {
-    /* Gems inside are collected normally; platform filter is ignored */
+platforms_open ::= PLATFORMS platform_names DO . {
+    /* platform_names already populated gf->_current_platforms */
 }
 
-platform_names ::= SYMBOL .
-platform_names ::= platform_names COMMA SYMBOL .
+platforms_stmt ::= platforms_open stmts END . {
+    /* Clear current platforms */
+    for (int i = 0; i < gf->_n_current_platforms; i++)
+        free(gf->_current_platforms[i]);
+    free(gf->_current_platforms);
+    gf->_current_platforms = NULL;
+    gf->_n_current_platforms = 0;
+}
+
+platform_names ::= SYMBOL(S) . {
+    gf->_current_platforms = malloc(sizeof(char *));
+    gf->_current_platforms[0] = tok_strdup(S, 1, 0);  /* strip leading colon */
+    gf->_n_current_platforms = 1;
+}
+
+platform_names ::= platform_names COMMA SYMBOL(S) . {
+    gf->_current_platforms = realloc(gf->_current_platforms,
+        sizeof(char *) * (size_t)(gf->_n_current_platforms + 1));
+    gf->_current_platforms[gf->_n_current_platforms] = tok_strdup(S, 1, 0);
+    gf->_n_current_platforms++;
+}
 
 /* ------------------------------------------------------------------ */
 /* path "." do ... end                                                 */

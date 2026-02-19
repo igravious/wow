@@ -340,7 +340,7 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
             "def"           { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
             "require"       { token->length = (int)(lex->cursor - lex->tok); return UNSUPPORTED; }
 
-            /* Percent-literal arrays: %i[...] or %w[...] */
+            /* Percent-literal arrays: %i[...] or %w[...] (bracket form) */
             "%i[" [^\]\x00]* "]"  {
                 token->length = (int)(lex->cursor - lex->tok);
                 return PERCENT_ARRAY;
@@ -348,6 +348,22 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
             "%w[" [^\]\x00]* "]"  {
                 token->length = (int)(lex->cursor - lex->tok);
                 return PERCENT_ARRAY;
+            }
+
+            /* Percent-literal arrays: %i(...) or %w(...) (paren form) */
+            "%i(" [^)\x00]* ")"  {
+                token->length = (int)(lex->cursor - lex->tok);
+                return PERCENT_ARRAY;
+            }
+            "%w(" [^)\x00]* ")"  {
+                token->length = (int)(lex->cursor - lex->tok);
+                return PERCENT_ARRAY;
+            }
+
+            /* Percent-string: %(text) — equivalent to double-quoted string */
+            "%(" [^)\x00]* ")"  {
+                token->length = (int)(lex->cursor - lex->tok);
+                return STRING;
             }
 
             /* Numeric literals */
@@ -400,6 +416,12 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
             "&&"  { token->length = 2; return AND; }
             "||"  { token->length = 2; return OR; }
             "::"  { token->length = 2; return COLON_COLON; }
+
+            /* Semicolons treated as newlines (statement separator) */
+            ";"   {
+                token->length = 1;
+                return NEWLINE;
+            }
 
             /* Single-character operators and punctuation */
             ","   { token->length = 1; return COMMA; }

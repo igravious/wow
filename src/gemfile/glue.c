@@ -166,6 +166,15 @@ int wow_gemfile_parse_buf(const char *buf, int len, struct wow_gemfile *gf)
 {
     wow_gemfile_init(gf);
 
+    /* Strip UTF-8 BOM (U+FEFF = 0xEF 0xBB 0xBF) if present */
+    if (len >= 3 &&
+        (unsigned char)buf[0] == 0xEF &&
+        (unsigned char)buf[1] == 0xBB &&
+        (unsigned char)buf[2] == 0xBF) {
+        buf += 3;
+        len -= 3;
+    }
+
     struct wow_lexer lex;
     wow_lexer_init(&lex, buf, len);
 
@@ -244,11 +253,22 @@ int wow_gemfile_parse_file(const char *path, struct wow_gemfile *gf)
     /* Use the file-path-aware version for eval_gemfile support */
     wow_gemfile_init(gf);
 
+    /* Strip UTF-8 BOM if present */
+    const char *start = buf;
+    int slen = len;
+    if (slen >= 3 &&
+        (unsigned char)start[0] == 0xEF &&
+        (unsigned char)start[1] == 0xBB &&
+        (unsigned char)start[2] == 0xBF) {
+        start += 3;
+        slen -= 3;
+    }
+
     struct wow_lexer lex;
-    wow_lexer_init(&lex, buf, len);
+    wow_lexer_init(&lex, start, slen);
 
     struct wow_eval_ctx eval;
-    wow_eval_init(&eval, &lex, NULL, path, buf, len);
+    wow_eval_init(&eval, &lex, NULL, path, start, slen);
 
     void *parser = ParseAlloc(malloc);
     if (!parser) { wow_eval_free(&eval); free(buf); return -1; }

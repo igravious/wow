@@ -52,7 +52,7 @@ static void test_basic(void)
     check("dep[1] = rack", gf.n_deps > 1 &&
           strcmp(gf.deps[1].name, "rack") == 0);
     check("no constraints", gf.n_deps > 0 && gf.deps[0].n_constraints == 0);
-    check("require defaults true", gf.n_deps > 0 && gf.deps[0].require == true);
+    check("require defaults true", gf.n_deps > 0 && gf.deps[0].autorequire_specified == false);
     check("no ruby version", gf.ruby_version == NULL);
     check("no gemspec", gf.has_gemspec == false);
     wow_gemfile_free(&gf);
@@ -121,27 +121,29 @@ static void test_groups(void)
     check("5 deps", gf.n_deps == 5);
 
     /* sinatra — no group */
-    check("sinatra no group",
-          gf.n_deps > 0 && gf.deps[0].group == NULL);
+    check("sinatra default group",
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "default") == 0);
 
     /* rspec — group: development */
     check("rspec group=development",
-          gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "development") == 0);
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "development") == 0);
 
     /* pry — group: development */
     check("pry group=development",
-          gf.n_deps > 2 && gf.deps[2].group &&
-          strcmp(gf.deps[2].group, "development") == 0);
+          gf.n_deps > 2 && gf.deps[2].n_groups == 1 &&
+          strcmp(gf.deps[2].groups[0], "development") == 0);
 
     /* minitest — group: test */
     check("minitest group=test",
-          gf.n_deps > 3 && gf.deps[3].group &&
-          strcmp(gf.deps[3].group, "test") == 0);
+          gf.n_deps > 3 && gf.deps[3].n_groups == 1 &&
+          strcmp(gf.deps[3].groups[0], "test") == 0);
 
     /* rack — no group (after end) */
-    check("rack no group",
-          gf.n_deps > 4 && gf.deps[4].group == NULL);
+    check("rack default group",
+          gf.n_deps > 4 && gf.deps[4].n_groups == 1 &&
+          strcmp(gf.deps[4].groups[0], "default") == 0);
 
     wow_gemfile_free(&gf);
 }
@@ -163,18 +165,19 @@ static void test_options(void)
     check("3 deps", gf.n_deps == 3);
 
     check("pry require=false",
-          gf.n_deps > 0 && gf.deps[0].require == false);
-    check("pry no group",
-          gf.n_deps > 0 && gf.deps[0].group == NULL);
+          gf.n_deps > 0 && gf.deps[0].autorequire_specified == true && gf.deps[0].n_autorequire == 0);
+    check("pry default group",
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "default") == 0);
 
     check("debug require=false",
-          gf.n_deps > 1 && gf.deps[1].require == false);
+          gf.n_deps > 1 && gf.deps[1].autorequire_specified == true && gf.deps[1].n_autorequire == 0);
     check("debug group=development",
-          gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "development") == 0);
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "development") == 0);
 
-    check("sinatra require=true",
-          gf.n_deps > 2 && gf.deps[2].require == true);
+    check("sinatra require=true (default)",
+          gf.n_deps > 2 && gf.deps[2].autorequire_specified == false);
 
     wow_gemfile_free(&gf);
 }
@@ -193,10 +196,10 @@ static void test_hashrocket(void)
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
     check("require=false",
-          gf.n_deps > 0 && gf.deps[0].require == false);
+          gf.n_deps > 0 && gf.deps[0].autorequire_specified == true && gf.deps[0].n_autorequire == 0);
     check("group=development",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -337,8 +340,8 @@ static void test_multi_group(void)
     check("1 dep", gf.n_deps == 1);
     /* First symbol is kept */
     check("group=development",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -403,11 +406,11 @@ static void test_group_override(void)
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
     check("pry inherits block group",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     check("debug explicit group overrides block",
-          gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "test") == 0);
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -460,8 +463,8 @@ static void test_require_nil(void)
     int rc = parse(REQUIRE_NIL, &gf);
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
-    check("rake require=false", gf.n_deps > 0 && gf.deps[0].require == false);
-    check("pg require=false", gf.n_deps > 1 && gf.deps[1].require == false);
+    check("rake require=false", gf.n_deps > 0 && gf.deps[0].autorequire_specified == true && gf.deps[0].n_autorequire == 0);
+    check("pg require=false", gf.n_deps > 1 && gf.deps[1].autorequire_specified == true && gf.deps[1].n_autorequire == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -482,8 +485,8 @@ static void test_group_string(void)
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
     check("group=test",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "test") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -628,10 +631,12 @@ static void test_platforms_block(void)
     int rc = parse(PLATFORMS_BLOCK, &gf);
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
-    check("no group set on jruby-openssl",
-          gf.n_deps > 0 && gf.deps[0].group == NULL);
-    check("no group set on sqlite3",
-          gf.n_deps > 1 && gf.deps[1].group == NULL);
+    check("default group on jruby-openssl",
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "default") == 0);
+    check("default group on sqlite3",
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "default") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -740,8 +745,8 @@ static void test_groups_plural(void)
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
     check("guard group=test",
-          gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "test") == 0);
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -764,11 +769,11 @@ static void test_nested_blocks(void)
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
     check("pry group=development",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     check("byebug inherits group=development",
-          gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "development") == 0);
+          gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -914,10 +919,10 @@ static void test_eval_nested_if(void)
           strcmp(gf.deps[0].name, "pry") == 0);
     check("dep[1] = debug", gf.n_deps > 1 &&
           strcmp(gf.deps[1].name, "debug") == 0);
-    check("pry group=development", gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
-    check("debug group=development", gf.n_deps > 1 && gf.deps[1].group &&
-          strcmp(gf.deps[1].group, "development") == 0);
+    check("pry group=development", gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
+    check("debug group=development", gf.n_deps > 1 && gf.deps[1].n_groups == 1 &&
+          strcmp(gf.deps[1].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1202,13 +1207,14 @@ static void test_eval_interleaved(void)
     check("3 deps", gf.n_deps == 3);
     check("dep[0] = rspec", gf.n_deps > 0 &&
           strcmp(gf.deps[0].name, "rspec") == 0);
-    check("rspec group=test", gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "test") == 0);
+    check("rspec group=test", gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "test") == 0);
     check("dep[1] = minitest", gf.n_deps > 1 &&
           strcmp(gf.deps[1].name, "minitest") == 0);
     check("dep[2] = sinatra", gf.n_deps > 2 &&
           strcmp(gf.deps[2].name, "sinatra") == 0);
-    check("sinatra no group", gf.n_deps > 2 && gf.deps[2].group == NULL);
+    check("sinatra default group", gf.n_deps > 2 && gf.deps[2].n_groups == 1 &&
+          strcmp(gf.deps[2].groups[0], "default") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1339,12 +1345,12 @@ static void test_eval_realworld(void)
           strcmp(gf.deps[1].name, "pry") == 0);
     check("dep[2] = byebug", gf.n_deps > 2 &&
           strcmp(gf.deps[2].name, "byebug") == 0);
-    check("byebug group=development", gf.n_deps > 2 && gf.deps[2].group &&
-          strcmp(gf.deps[2].group, "development") == 0);
+    check("byebug group=development", gf.n_deps > 2 && gf.deps[2].n_groups == 1 &&
+          strcmp(gf.deps[2].groups[0], "development") == 0);
     check("dep[3] = simplecov", gf.n_deps > 3 &&
           strcmp(gf.deps[3].name, "simplecov") == 0);
     check("simplecov require=false", gf.n_deps > 3 &&
-          gf.deps[3].require == false);
+          gf.deps[3].autorequire_specified == true && gf.deps[3].n_autorequire == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1364,8 +1370,8 @@ static void test_group_optional(void)
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
     check("pry group=development",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1385,8 +1391,8 @@ static void test_group_multi_kw(void)
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
     check("rspec group=development",
-          gf.n_deps > 0 && gf.deps[0].group &&
-          strcmp(gf.deps[0].group, "development") == 0);
+          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+          strcmp(gf.deps[0].groups[0], "development") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1433,7 +1439,7 @@ static void test_paren_gem(void)
     check("constraint ~> 4.0", gf.n_deps > 0 &&
           gf.deps[0].n_constraints > 0 &&
           strcmp(gf.deps[0].constraints[0], "~> 4.0") == 0);
-    check("require=false", gf.n_deps > 0 && gf.deps[0].require == false);
+    check("require=false", gf.n_deps > 0 && gf.deps[0].autorequire_specified == true && gf.deps[0].n_autorequire == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1523,6 +1529,78 @@ static void test_install_if(void)
           strcmp(gf.deps[0].name, "mac-only") == 0);
     check("dep[1] = universal", gf.n_deps > 1 &&
           strcmp(gf.deps[1].name, "universal") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: gem "x", group: [:a, :b] array groups ────────────────── */
+
+static const char ARRAY_GROUPS[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"rspec\", group: [:test, :development]\n"
+    "gem \"guard\", :groups => [:development]\n";
+
+static void test_array_groups(void)
+{
+    printf("test_array_groups:\n");
+    struct wow_gemfile gf;
+    int rc = parse(ARRAY_GROUPS, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("rspec 2 groups", gf.n_deps > 0 && gf.deps[0].n_groups == 2);
+    check("rspec group[0]=test", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].groups[0], "test") == 0);
+    check("rspec group[1]=development", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].groups[1], "development") == 0);
+    check("guard 1 group", gf.n_deps > 1 && gf.deps[1].n_groups == 1);
+    check("guard group[0]=development", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].groups[0], "development") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: gem "x", platforms: [:mri] array platforms ───────────── */
+
+static const char ARRAY_PLATFORMS[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"byebug\", platforms: [:mri, :mingw]\n"
+    "gem \"jruby-openssl\", :platform => [:jruby]\n";
+
+static void test_array_platforms(void)
+{
+    printf("test_array_platforms:\n");
+    struct wow_gemfile gf;
+    int rc = parse(ARRAY_PLATFORMS, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("byebug 2 platforms", gf.n_deps > 0 && gf.deps[0].n_platforms == 2);
+    check("byebug platform[0]=mri", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].platforms[0], "mri") == 0);
+    check("byebug platform[1]=mingw", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].platforms[1], "mingw") == 0);
+    check("jruby-openssl 1 platform", gf.n_deps > 1 && gf.deps[1].n_platforms == 1);
+    check("jruby-openssl platform[0]=jruby", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].platforms[0], "jruby") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: gem "x", require: ["a", "b"] array autorequire ───────── */
+
+static const char ARRAY_REQUIRE[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"rails\", require: [\"rails/all\", \"rails/test\"]\n";
+
+static void test_array_require(void)
+{
+    printf("test_array_require:\n");
+    struct wow_gemfile gf;
+    int rc = parse(ARRAY_REQUIRE, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("rails autorequire_specified", gf.n_deps > 0 && gf.deps[0].autorequire_specified == true);
+    check("rails 2 autorequire paths", gf.n_deps > 0 && gf.deps[0].n_autorequire == 2);
+    check("rails autorequire[0]=rails/all", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].autorequire[0], "rails/all") == 0);
+    check("rails autorequire[1]=rails/test", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].autorequire[1], "rails/test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1617,6 +1695,9 @@ int main(void)
     test_git_block();
     test_github_block();
     test_install_if();
+    test_array_groups();
+    test_array_platforms();
+    test_array_require();
 
     /* Evaluator tests (Phase 5b) */
     test_eval_if_true();

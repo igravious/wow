@@ -128,3 +128,23 @@ src/gemfile_parser.c: src/gemfile.y
 ```
 
 Ensure re2c and lemon are available as build-time dependencies.
+
+## TODO: wow Gemfile Spec
+
+Define a formal spec for the subset of Gemfile syntax that wow supports. This
+draws a clear line between "Gemfile as DSL" (what wow parses) and "Gemfile as
+Ruby script" (what only MRI can run). Key points:
+
+- **In scope**: `source`, `gem`, `group`, `platforms`/`platform`, `ruby`,
+  `gemspec`, `plugin`, `path`/`git`/`github` blocks, `install_if` blocks,
+  `git_source` declarations, `eval_gemfile`, string/symbol literals, version
+  constraints (bare and array), `%w[]`/`%i[]`, keyword args (`key: value` and
+  `key => value`), `ENV[]` lookups, simple variable assignment (`x = "..."`),
+  `RUBY_VERSION`/`RUBY_ENGINE`/`RUBY_PLATFORM` constants, `if`/`unless`/
+  `elsif`/`else` conditionals, string interpolation
+- **Out of scope**: `require`, `def`, `eval`, `case`/`when`, method calls,
+  class/module definitions, loops, arbitrary Ruby expressions
+- **Goal**: 100% of spec-compliant Gemfiles parse correctly; non-compliant
+  files get a clear error message pointing at the unsupported construct
+- **Precedent**: uv doesn't run arbitrary Python in requirements files either
+- **Current corpus pass rate**: ~96.8% of real-world Gemfiles (56,561 tested)

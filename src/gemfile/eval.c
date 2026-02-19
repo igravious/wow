@@ -109,15 +109,17 @@ static void push_block(struct wow_eval_ctx *ctx, enum wow_block_type type,
 /* ------------------------------------------------------------------ */
 
 static const char *lookup_var(struct wow_eval_ctx *ctx, const char *name,
-                              bool *out_is_version)
+                              bool *out_is_version, bool *out_found)
 {
     for (int i = ctx->n_vars - 1; i >= 0; i--) {
         if (strcmp(ctx->vars[i].name, name) == 0) {
             if (out_is_version) *out_is_version = ctx->vars[i].is_version;
-            return ctx->vars[i].value;
+            if (out_found) *out_found = true;
+            return ctx->vars[i].value;  /* may be NULL (nil) */
         }
     }
     if (out_is_version) *out_is_version = false;
+    if (out_found) *out_found = false;
     return NULL;
 }
 
@@ -213,7 +215,12 @@ static int peek(struct wow_eval_ctx *ctx, int pos, int end)
     return ctx->line[pos].id;
 }
 
-/* Truthiness: only nil and false are falsy (Ruby semantics) */
+/*
+ * Truthiness: only nil and false are falsy (Ruby semantics).
+ * IMPORTANT: Callers MUST check for VAL_UNEVALUATABLE before calling this.
+ * VAL_UNEVALUATABLE must never silently become true or false — that produces
+ * wrong evaluation results (the "else without matching if" class of bugs).
+ */
 static bool is_truthy(struct wow_eval_val v)
 {
     if (v.type == VAL_NIL) return false;
@@ -250,14 +257,20 @@ static struct wow_eval_val val_float(double f)
     return (struct wow_eval_val){ .type = VAL_FLOAT, .f = f };
 }
 
+static struct wow_eval_val val_unevaluatable(void)
+{
+    return (struct wow_eval_val){ .type = VAL_UNEVALUATABLE };
+}
+
 /* Convert value to string for comparison */
 static const char *val_to_str(struct wow_eval_ctx *ctx, struct wow_eval_val v)
 {
     char buf[64];
     switch (v.type) {
-    case VAL_NIL:    return "";
-    case VAL_BOOL:   return v.b ? "true" : "false";
-    case VAL_STRING: return v.s ? v.s : "";
+    case VAL_NIL:            return "";
+    case VAL_BOOL:           return v.b ? "true" : "false";
+    case VAL_STRING:         return v.s ? v.s : "";
+    case VAL_UNEVALUATABLE:  return "";  /* callers must check before here */
     case VAL_INT:
         snprintf(buf, sizeof(buf), "%lld", (long long)v.i);
         return eval_alloc(ctx, strdup(buf));
@@ -411,7 +424,7 @@ static struct wow_eval_val eval_atom(struct wow_eval_ctx *ctx,
                 }
             }
             free(name);
-            return val_nil();
+            return val_unevaluatable();
         }
 
         /* RUBY_VERSION */
@@ -484,21 +497,29 @@ static struct wow_eval_val eval_atom(struct wow_eval_ctx *ctx,
                 free(cls);
             }
             free(name);
-            return val_nil();
+            return val_unevaluatable();
         }
 
         /* Variable lookup */
         bool var_is_ver = false;
-        const char *val = lookup_var(ctx, name, &var_is_ver);
+        bool var_found = false;
+        const char *val = lookup_var(ctx, name, &var_is_ver, &var_found);
+        if (var_found) {
+            free(name);
+            if (val) return val_string(ctx, val, var_is_ver);
+            return val_nil();  /* variable exists but holds nil */
+        }
+        /* Unknown identifier — not a known constant, not a variable.
+         * This is something like File, Dir, Pathname, etc. that we
+         * cannot evaluate. Must bail, not silently return nil. */
         free(name);
-        if (val) return val_string(ctx, val, var_is_ver);
-        return val_nil();
+        return val_unevaluatable();
     }
 
     default:
-        /* Unexpected token — return nil rather than crash */
+        /* Unexpected token — we cannot evaluate this expression */
         if (*pos < end) (*pos)++;
-        return val_nil();
+        return val_unevaluatable();
     }
 }
 
@@ -507,6 +528,9 @@ static struct wow_eval_val eval_primary(struct wow_eval_ctx *ctx,
                                         int *pos, int end)
 {
     struct wow_eval_val v = eval_atom(ctx, pos, end);
+
+    /* If atom is unevaluatable, don't try to call methods on it */
+    if (v.type == VAL_UNEVALUATABLE) return v;
 
     while (peek(ctx, *pos, end) == DOT) {
         (*pos)++;  /* skip . */
@@ -544,7 +568,7 @@ static struct wow_eval_val eval_primary(struct wow_eval_ctx *ctx,
         } else if (strcmp(method, "freeze") == 0) {
             /* .freeze is a no-op for our purposes */
         } else {
-            /* Unknown method — return nil */
+            /* Unknown method — we cannot evaluate this */
             if (peek(ctx, *pos, end) == LPAREN) {
                 /* Skip args: consume until matching RPAREN */
                 (*pos)++;
@@ -556,7 +580,7 @@ static struct wow_eval_val eval_primary(struct wow_eval_ctx *ctx,
                     (*pos)++;
                 }
             }
-            v = val_nil();
+            v = val_unevaluatable();
         }
         free(method);
     }
@@ -569,6 +593,9 @@ static struct wow_eval_val eval_compare(struct wow_eval_ctx *ctx,
                                         struct wow_eval_val l, int op,
                                         struct wow_eval_val r)
 {
+    if (l.type == VAL_UNEVALUATABLE || r.type == VAL_UNEVALUATABLE)
+        return val_unevaluatable();
+
     int cmp;
 
     /* Version comparison if either side is tagged */
@@ -617,16 +644,16 @@ static struct wow_eval_val eval_cmp_expr(struct wow_eval_ctx *ctx,
         return eval_compare(ctx, l, op, r);
     }
     if (op == MATCH) {
-        /* =~ regex — unsupported, treat as truthy */
+        /* =~ regex — we cannot evaluate regex matching */
         (*pos)++;
-        /* Skip the regex (usually a string-like /.../) — consume rest */
+        /* Skip the regex tokens — consume rest of this sub-expression */
         while (*pos < end) {
             int t = peek(ctx, *pos, end);
             if (t == AND || t == OR || t == RPAREN || t == NEWLINE || t == 0)
                 break;
             (*pos)++;
         }
-        return val_bool(true);
+        return val_unevaluatable();
     }
     return l;
 }
@@ -638,6 +665,7 @@ static struct wow_eval_val eval_not_expr(struct wow_eval_ctx *ctx,
     if (peek(ctx, *pos, end) == BANG) {
         (*pos)++;
         struct wow_eval_val v = eval_not_expr(ctx, pos, end);
+        if (v.type == VAL_UNEVALUATABLE) return v;
         return val_bool(!is_truthy(v));
     }
     return eval_cmp_expr(ctx, pos, end);
@@ -650,7 +678,10 @@ static struct wow_eval_val eval_and_expr(struct wow_eval_ctx *ctx,
     struct wow_eval_val v = eval_not_expr(ctx, pos, end);
     while (peek(ctx, *pos, end) == AND) {
         (*pos)++;
-        if (!is_truthy(v)) {
+        if (v.type == VAL_UNEVALUATABLE) {
+            /* LHS unevaluatable — skip RHS, propagate */
+            eval_not_expr(ctx, pos, end);
+        } else if (!is_truthy(v)) {
             /* Short-circuit: skip RHS but still advance pos */
             eval_not_expr(ctx, pos, end);
             /* v stays falsy */
@@ -668,7 +699,10 @@ static struct wow_eval_val eval_or_expr(struct wow_eval_ctx *ctx,
     struct wow_eval_val v = eval_and_expr(ctx, pos, end);
     while (peek(ctx, *pos, end) == OR) {
         (*pos)++;
-        if (is_truthy(v)) {
+        if (v.type == VAL_UNEVALUATABLE) {
+            /* LHS unevaluatable — skip RHS, propagate */
+            eval_and_expr(ctx, pos, end);
+        } else if (is_truthy(v)) {
             /* Short-circuit: skip RHS */
             eval_and_expr(ctx, pos, end);
         } else {
@@ -739,7 +773,7 @@ static const char *interpolate_string(struct wow_eval_ctx *ctx,
 
             if (simple && var_len > 0) {
                 char *vname = strndup(var_start, (size_t)var_len);
-                subst = lookup_var(ctx, vname, NULL);
+                subst = lookup_var(ctx, vname, NULL, NULL);
                 if (!subst) {
                     /* Try built-in constants */
                     if (strcmp(vname, "RUBY_VERSION") == 0)
@@ -858,7 +892,7 @@ static void flush_line(struct wow_eval_ctx *ctx, int start, int end)
             const char *val = NULL;
             char *vname = strndup(tok.start, (size_t)tok.length);
             if (vname) {
-                val = lookup_var(ctx, vname, NULL);
+                val = lookup_var(ctx, vname, NULL, NULL);
                 if (!val) {
                     if (strcmp(vname, "RUBY_VERSION") == 0)
                         val = ctx->ruby_version;
@@ -929,6 +963,13 @@ static void process_line(struct wow_eval_ctx *ctx)
             /* Strip trailing NEWLINE from expression range */
             while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
             struct wow_eval_val cond = eval_expr(ctx, &pos, end);
+            if (cond.type == VAL_UNEVALUATABLE) {
+                eval_error(ctx, first_line,
+                    "unevaluatable condition in %s",
+                    first_id == IF ? "if" : "unless");
+                ctx->line_len = 0;
+                return;
+            }
             bool truthy = is_truthy(cond) ^ negate;
             push_block(ctx, BLOCK_IF, truthy, truthy);
         }
@@ -951,6 +992,12 @@ static void process_line(struct wow_eval_ctx *ctx)
             int end = ctx->line_len;
             while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
             struct wow_eval_val cond = eval_expr(ctx, &pos, end);
+            if (cond.type == VAL_UNEVALUATABLE) {
+                eval_error(ctx, first_line,
+                    "unevaluatable condition in elsif");
+                ctx->line_len = 0;
+                return;
+            }
             bool truthy = is_truthy(cond);
             ctx->stack[ctx->depth - 1].active = truthy;
             ctx->stack[ctx->depth - 1].any_taken |= truthy;
@@ -1020,6 +1067,13 @@ static void process_line(struct wow_eval_ctx *ctx)
         while (cond_end > cond_start &&
                ctx->line[cond_end - 1].id == NEWLINE) cond_end--;
         struct wow_eval_val cond = eval_expr(ctx, &cond_start, cond_end);
+        if (cond.type == VAL_UNEVALUATABLE) {
+            eval_error(ctx, ctx->line[trail_pos].tok.line,
+                "unevaluatable condition in trailing %s",
+                ctx->line[trail_pos].id == IF ? "if" : "unless");
+            ctx->line_len = 0;
+            return;
+        }
         bool truthy = is_truthy(cond) ^ negate;
         if (truthy) {
             /* Emit tokens before the if/unless */
@@ -1037,6 +1091,13 @@ static void process_line(struct wow_eval_ctx *ctx)
         int end = ctx->line_len;
         while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
         struct wow_eval_val val = eval_expr(ctx, &pos, end);
+        if (val.type == VAL_UNEVALUATABLE) {
+            eval_error(ctx, ctx->line[0].tok.line,
+                "unevaluatable expression in assignment to '%s'", name);
+            free(name);
+            ctx->line_len = 0;
+            return;
+        }
         const char *sval = (val.type == VAL_NIL) ? NULL : val_to_str(ctx, val);
         store_var(ctx, name, sval, val.is_version);
         free(name);

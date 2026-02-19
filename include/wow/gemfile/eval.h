@@ -50,7 +50,8 @@ enum wow_eval_type {
     VAL_BOOL,
     VAL_STRING,
     VAL_INT,
-    VAL_FLOAT
+    VAL_FLOAT,
+    VAL_UNEVALUATABLE  /* expression we cannot evaluate — must bail */
 };
 
 struct wow_eval_val {
