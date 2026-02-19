@@ -336,6 +336,13 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL HASHROCKET array . {
     /* Hashrocket key with array value -- accept but ignore */
 }
 
+/* Variable reference as version arg: gem "x", some_var (unresolvable) */
+gem_opts(R) ::= gem_opts(L) COMMA IDENT . {
+    R = L;
+    memset(&L, 0, sizeof(L));
+    /* Accept but ignore — variable couldn't be resolved by evaluator */
+}
+
 /* Bare array as positional constraint: gem 'x', ['>= 1', '< 2'] */
 gem_opts(R) ::= gem_opts(L) COMMA string_array(A) . {
     R = L;

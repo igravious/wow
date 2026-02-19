@@ -851,6 +851,38 @@ static void flush_line(struct wow_eval_ctx *ctx, int start, int end)
             }
         }
 
+        /* Variable substitution on IDENT tokens: replace known
+         * variables and built-in constants with STRING tokens so
+         * the parser can handle e.g. gem "rack", rack_version */
+        if (id == IDENT) {
+            const char *val = NULL;
+            char *vname = strndup(tok.start, (size_t)tok.length);
+            if (vname) {
+                val = lookup_var(ctx, vname, NULL);
+                if (!val) {
+                    if (strcmp(vname, "RUBY_VERSION") == 0)
+                        val = ctx->ruby_version;
+                    else if (strcmp(vname, "RUBY_ENGINE") == 0)
+                        val = ctx->ruby_engine;
+                    else if (strcmp(vname, "RUBY_PLATFORM") == 0)
+                        val = ctx->ruby_platform;
+                }
+                free(vname);
+            }
+            if (val) {
+                int vlen = (int)strlen(val);
+                char *quoted = eval_alloc(ctx,
+                    malloc((size_t)vlen + 3));
+                quoted[0] = '"';
+                memcpy(quoted + 1, val, (size_t)vlen);
+                quoted[vlen + 1] = '"';
+                quoted[vlen + 2] = '\0';
+                tok.start = quoted;
+                tok.length = vlen + 2;
+                id = STRING;
+            }
+        }
+
         emit(ctx, id, tok);
     }
 

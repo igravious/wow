@@ -1526,6 +1526,46 @@ static void test_install_if(void)
     wow_gemfile_free(&gf);
 }
 
+/* ── Test: gem "x", some_var (variable as version arg) ──────────── */
+
+static const char VAR_VERSION[] =
+    "source \"https://rubygems.org\"\n"
+    "rack_version = \"~> 3.0\"\n"
+    "gem \"rack\", rack_version\n";
+
+static void test_var_version(void)
+{
+    printf("test_var_version:\n");
+    struct wow_gemfile gf;
+    int rc = parse(VAR_VERSION, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = rack", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "rack") == 0);
+    check("constraint ~> 3.0", gf.n_deps > 0 &&
+          gf.deps[0].n_constraints > 0 &&
+          strcmp(gf.deps[0].constraints[0], "~> 3.0") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: ruby RUBY_VERSION (built-in constant substitution) ───── */
+
+static const char RUBY_CONST[] =
+    "source \"https://rubygems.org\"\n"
+    "ruby RUBY_VERSION\n"
+    "gem \"sinatra\"\n";
+
+static void test_ruby_const(void)
+{
+    printf("test_ruby_const:\n");
+    struct wow_gemfile gf;
+    int rc = parse(RUBY_CONST, &gf);
+    check("parses OK", rc == 0);
+    check("ruby version set", gf.ruby_version != NULL);
+    check("1 dep", gf.n_deps == 1);
+    wow_gemfile_free(&gf);
+}
+
 /* ── Main ───────────────────────────────────────────────────────── */
 
 int main(void)
@@ -1603,6 +1643,10 @@ int main(void)
     test_eval_gemfile_missing();
     test_eval_interpolation();
     test_eval_realworld();
+
+    /* Variable substitution tests */
+    test_var_version();
+    test_ruby_const();
 
     printf("\n=== Results: %d passed, %d failed ===\n", n_pass, n_fail);
     return n_fail > 0 ? 1 : 0;
