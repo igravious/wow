@@ -19,6 +19,12 @@ void wow_gemfile_free(struct wow_gemfile *gf)
     for (int i = 0; i < gf->_n_current_groups; i++)
         free(gf->_current_groups[i]);
     free(gf->_current_groups);
+    /* Free any remaining group stack frames (defensive) */
+    for (int d = 0; d < gf->_group_depth; d++) {
+        for (int i = 0; i < gf->_group_stack[d].n_groups; i++)
+            free(gf->_group_stack[d].groups[i]);
+        free(gf->_group_stack[d].groups);
+    }
     for (int i = 0; i < gf->_n_current_platforms; i++)
         free(gf->_current_platforms[i]);
     free(gf->_current_platforms);

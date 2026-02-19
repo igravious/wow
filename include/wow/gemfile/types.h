@@ -27,6 +27,13 @@ struct wow_gemfile_dep {
     int    n_platforms;
 };
 
+/* Stack frame for nested group blocks */
+#define WOW_MAX_GROUP_DEPTH 8
+struct _wow_group_frame {
+    char **groups;
+    int    n_groups;
+};
+
 /* Parsed Gemfile */
 struct wow_gemfile {
     char  *source;           /* "https://rubygems.org"                  */
@@ -38,6 +45,8 @@ struct wow_gemfile {
     size_t  _deps_cap;
     char  **_current_groups;         /* set during group do...end parsing   */
     int     _n_current_groups;
+    struct _wow_group_frame _group_stack[WOW_MAX_GROUP_DEPTH];
+    int     _group_depth;            /* nesting depth of group blocks       */
     char  **_current_platforms;      /* set during platforms do...end       */
     int     _n_current_platforms;
 };

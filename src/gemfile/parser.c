@@ -1911,75 +1911,99 @@ static YYACTIONTYPE yy_reduce(
 {  yy_destructor(yypParser,74,&yymsp[-2].minor);
 #line 618 "src/gemfile/parser.y"
 {
+    /* Free current merged groups */
     for (int i = 0; i < gf->_n_current_groups; i++)
         free(gf->_current_groups[i]);
     free(gf->_current_groups);
-    gf->_current_groups = NULL;
-    gf->_n_current_groups = 0;
+    /* Pop parent groups from stack */
+    if (gf->_group_depth > 0) {
+        gf->_group_depth--;
+        gf->_current_groups = gf->_group_stack[gf->_group_depth].groups;
+        gf->_n_current_groups = gf->_group_stack[gf->_group_depth].n_groups;
+    } else {
+        gf->_current_groups = NULL;
+        gf->_n_current_groups = 0;
+    }
 }
-#line 1920 "src/gemfile/parser.c"
+#line 1928 "src/gemfile/parser.c"
   yy_destructor(yypParser,59,&yymsp[-1].minor);
 }
         break;
       case 35: /* name_list ::= SYMBOL */
-#line 626 "src/gemfile/parser.y"
+#line 634 "src/gemfile/parser.y"
 {
-    for (int i = 0; i < gf->_n_current_groups; i++)
-        free(gf->_current_groups[i]);
-    free(gf->_current_groups);
-    gf->_current_groups = malloc(sizeof(char *));
-    gf->_current_groups[0] = tok_strdup(yymsp[0].minor.yy0, 1, 0);
-    gf->_n_current_groups = 1;
+    /* Push current groups onto stack (for nested group restoration) */
+    if (gf->_group_depth < WOW_MAX_GROUP_DEPTH) {
+        gf->_group_stack[gf->_group_depth].groups = gf->_current_groups;
+        gf->_group_stack[gf->_group_depth].n_groups = gf->_n_current_groups;
+        gf->_group_depth++;
+    }
+    /* New current = copy of parent groups + this new group */
+    int pn = (gf->_group_depth > 0)
+        ? gf->_group_stack[gf->_group_depth - 1].n_groups : 0;
+    gf->_current_groups = malloc(sizeof(char *) * (size_t)(pn + 1));
+    for (int i = 0; i < pn; i++)
+        gf->_current_groups[i] = strdup(gf->_group_stack[gf->_group_depth - 1].groups[i]);
+    gf->_current_groups[pn] = tok_strdup(yymsp[0].minor.yy0, 1, 0);
+    gf->_n_current_groups = pn + 1;
 }
-#line 1934 "src/gemfile/parser.c"
+#line 1950 "src/gemfile/parser.c"
         break;
       case 36: /* name_list ::= STRING */
-#line 635 "src/gemfile/parser.y"
+#line 651 "src/gemfile/parser.y"
 {
-    for (int i = 0; i < gf->_n_current_groups; i++)
-        free(gf->_current_groups[i]);
-    free(gf->_current_groups);
-    gf->_current_groups = malloc(sizeof(char *));
-    gf->_current_groups[0] = tok_strdup(yymsp[0].minor.yy0, 1, 1);
-    gf->_n_current_groups = 1;
+    /* Push current groups onto stack (for nested group restoration) */
+    if (gf->_group_depth < WOW_MAX_GROUP_DEPTH) {
+        gf->_group_stack[gf->_group_depth].groups = gf->_current_groups;
+        gf->_group_stack[gf->_group_depth].n_groups = gf->_n_current_groups;
+        gf->_group_depth++;
+    }
+    /* New current = copy of parent groups + this new group */
+    int pn = (gf->_group_depth > 0)
+        ? gf->_group_stack[gf->_group_depth - 1].n_groups : 0;
+    gf->_current_groups = malloc(sizeof(char *) * (size_t)(pn + 1));
+    for (int i = 0; i < pn; i++)
+        gf->_current_groups[i] = strdup(gf->_group_stack[gf->_group_depth - 1].groups[i]);
+    gf->_current_groups[pn] = tok_strdup(yymsp[0].minor.yy0, 1, 1);
+    gf->_n_current_groups = pn + 1;
 }
-#line 1946 "src/gemfile/parser.c"
+#line 1970 "src/gemfile/parser.c"
         break;
       case 37: /* name_list ::= name_list COMMA SYMBOL */
 {  yy_destructor(yypParser,75,&yymsp[-2].minor);
-#line 644 "src/gemfile/parser.y"
+#line 668 "src/gemfile/parser.y"
 {
     gf->_current_groups = realloc(gf->_current_groups,
         sizeof(char *) * (size_t)(gf->_n_current_groups + 1));
     gf->_current_groups[gf->_n_current_groups] = tok_strdup(yymsp[0].minor.yy0, 1, 0);
     gf->_n_current_groups++;
 }
-#line 1957 "src/gemfile/parser.c"
+#line 1981 "src/gemfile/parser.c"
 }
         break;
       case 38: /* name_list ::= name_list COMMA STRING */
 {  yy_destructor(yypParser,75,&yymsp[-2].minor);
-#line 651 "src/gemfile/parser.y"
+#line 675 "src/gemfile/parser.y"
 {
     gf->_current_groups = realloc(gf->_current_groups,
         sizeof(char *) * (size_t)(gf->_n_current_groups + 1));
     gf->_current_groups[gf->_n_current_groups] = tok_strdup(yymsp[0].minor.yy0, 1, 1);
     gf->_n_current_groups++;
 }
-#line 1969 "src/gemfile/parser.c"
+#line 1993 "src/gemfile/parser.c"
 }
         break;
       case 39: /* platforms_open ::= PLATFORMS platform_names DO */
-#line 669 "src/gemfile/parser.y"
+#line 693 "src/gemfile/parser.y"
 {
     /* platform_names already populated gf->_current_platforms */
 }
-#line 1977 "src/gemfile/parser.c"
+#line 2001 "src/gemfile/parser.c"
   yy_destructor(yypParser,77,&yymsp[-1].minor);
         break;
       case 40: /* platforms_stmt ::= platforms_open stmts END */
 {  yy_destructor(yypParser,76,&yymsp[-2].minor);
-#line 673 "src/gemfile/parser.y"
+#line 697 "src/gemfile/parser.y"
 {
     /* Clear current platforms */
     for (int i = 0; i < gf->_n_current_platforms; i++)
@@ -1988,73 +2012,73 @@ static YYACTIONTYPE yy_reduce(
     gf->_current_platforms = NULL;
     gf->_n_current_platforms = 0;
 }
-#line 1991 "src/gemfile/parser.c"
+#line 2015 "src/gemfile/parser.c"
   yy_destructor(yypParser,59,&yymsp[-1].minor);
 }
         break;
       case 41: /* platform_names ::= SYMBOL */
-#line 682 "src/gemfile/parser.y"
+#line 706 "src/gemfile/parser.y"
 {
     gf->_current_platforms = malloc(sizeof(char *));
     gf->_current_platforms[0] = tok_strdup(yymsp[0].minor.yy0, 1, 0);  /* strip leading colon */
     gf->_n_current_platforms = 1;
 }
-#line 2002 "src/gemfile/parser.c"
+#line 2026 "src/gemfile/parser.c"
         break;
       case 42: /* platform_names ::= platform_names COMMA SYMBOL */
 {  yy_destructor(yypParser,77,&yymsp[-2].minor);
-#line 688 "src/gemfile/parser.y"
+#line 712 "src/gemfile/parser.y"
 {
     gf->_current_platforms = realloc(gf->_current_platforms,
         sizeof(char *) * (size_t)(gf->_n_current_platforms + 1));
     gf->_current_platforms[gf->_n_current_platforms] = tok_strdup(yymsp[0].minor.yy0, 1, 0);
     gf->_n_current_platforms++;
 }
-#line 2013 "src/gemfile/parser.c"
+#line 2037 "src/gemfile/parser.c"
 }
         break;
       case 43: /* ruby_stmt ::= RUBY STRING ruby_opts */
-#line 723 "src/gemfile/parser.y"
+#line 747 "src/gemfile/parser.y"
 {
     free(gf->ruby_version);
     gf->ruby_version = tok_strdup(yymsp[-1].minor.yy0, 1, 1);
     gem_opts_acc_free(&yymsp[0].minor.yy50);
 }
-#line 2023 "src/gemfile/parser.c"
+#line 2047 "src/gemfile/parser.c"
         break;
       case 44: /* ruby_stmt ::= RUBY KEY STRING */
-#line 729 "src/gemfile/parser.y"
+#line 753 "src/gemfile/parser.y"
 {
     /* ruby file: ".ruby-version" -- accept but don't store version */
 }
-#line 2030 "src/gemfile/parser.c"
+#line 2054 "src/gemfile/parser.c"
         break;
       case 46: /* ruby_opts ::= ruby_opts COMMA KEY STRING */
       case 47: /* ruby_opts ::= ruby_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==47);
-#line 738 "src/gemfile/parser.y"
+#line 762 "src/gemfile/parser.y"
 {
     yylhsminor.yy50 = yymsp[-3].minor.yy50;
     memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
 }
-#line 2039 "src/gemfile/parser.c"
+#line 2063 "src/gemfile/parser.c"
   yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
       case 48: /* ruby_opts ::= ruby_opts COMMA STRING */
-#line 748 "src/gemfile/parser.y"
+#line 772 "src/gemfile/parser.y"
 {
     yylhsminor.yy50 = yymsp[-2].minor.yy50;
     memset(&yymsp[-2].minor.yy50, 0, sizeof(yymsp[-2].minor.yy50));
     /* ruby "~> 3.2", ">= 3.2.1" -- version constraints, ignored */
 }
-#line 2049 "src/gemfile/parser.c"
+#line 2073 "src/gemfile/parser.c"
   yymsp[-2].minor.yy50 = yylhsminor.yy50;
         break;
       case 49: /* gemspec_stmt ::= GEMSPEC gemspec_opts */
-#line 758 "src/gemfile/parser.y"
+#line 782 "src/gemfile/parser.y"
 {
     gf->has_gemspec = true;
 }
-#line 2057 "src/gemfile/parser.c"
+#line 2081 "src/gemfile/parser.c"
   yy_destructor(yypParser,79,&yymsp[0].minor);
         break;
       case 50: /* file ::= stmts */
@@ -2062,7 +2086,7 @@ static YYACTIONTYPE yy_reduce(
 #line 181 "src/gemfile/parser.y"
 {
 }
-#line 2065 "src/gemfile/parser.c"
+#line 2089 "src/gemfile/parser.c"
 }
         break;
       case 51: /* stmts ::= stmts stmt */
@@ -2070,7 +2094,7 @@ static YYACTIONTYPE yy_reduce(
 #line 183 "src/gemfile/parser.y"
 {
 }
-#line 2073 "src/gemfile/parser.c"
+#line 2097 "src/gemfile/parser.c"
   yy_destructor(yypParser,60,&yymsp[0].minor);
 }
         break;
@@ -2079,7 +2103,7 @@ static YYACTIONTYPE yy_reduce(
 #line 186 "src/gemfile/parser.y"
 {
 }
-#line 2082 "src/gemfile/parser.c"
+#line 2106 "src/gemfile/parser.c"
 }
         break;
       case 54: /* stmt ::= gem_stmt */
@@ -2087,7 +2111,7 @@ static YYACTIONTYPE yy_reduce(
 #line 187 "src/gemfile/parser.y"
 {
 }
-#line 2090 "src/gemfile/parser.c"
+#line 2114 "src/gemfile/parser.c"
 }
         break;
       case 55: /* stmt ::= group_stmt */
@@ -2095,7 +2119,7 @@ static YYACTIONTYPE yy_reduce(
 #line 188 "src/gemfile/parser.y"
 {
 }
-#line 2098 "src/gemfile/parser.c"
+#line 2122 "src/gemfile/parser.c"
 }
         break;
       case 56: /* stmt ::= ruby_stmt */
@@ -2103,7 +2127,7 @@ static YYACTIONTYPE yy_reduce(
 #line 189 "src/gemfile/parser.y"
 {
 }
-#line 2106 "src/gemfile/parser.c"
+#line 2130 "src/gemfile/parser.c"
 }
         break;
       case 57: /* stmt ::= gemspec_stmt */
@@ -2111,7 +2135,7 @@ static YYACTIONTYPE yy_reduce(
 #line 190 "src/gemfile/parser.y"
 {
 }
-#line 2114 "src/gemfile/parser.c"
+#line 2138 "src/gemfile/parser.c"
 }
         break;
       case 58: /* stmt ::= platforms_stmt */
@@ -2119,7 +2143,7 @@ static YYACTIONTYPE yy_reduce(
 #line 191 "src/gemfile/parser.y"
 {
 }
-#line 2122 "src/gemfile/parser.c"
+#line 2146 "src/gemfile/parser.c"
 }
         break;
       case 59: /* stmt ::= plugin_stmt */
@@ -2127,7 +2151,7 @@ static YYACTIONTYPE yy_reduce(
 #line 192 "src/gemfile/parser.y"
 {
 }
-#line 2130 "src/gemfile/parser.c"
+#line 2154 "src/gemfile/parser.c"
 }
         break;
       case 60: /* stmt ::= path_stmt */
@@ -2135,7 +2159,7 @@ static YYACTIONTYPE yy_reduce(
 #line 193 "src/gemfile/parser.y"
 {
 }
-#line 2138 "src/gemfile/parser.c"
+#line 2162 "src/gemfile/parser.c"
 }
         break;
       case 61: /* stmt ::= git_stmt */
@@ -2143,7 +2167,7 @@ static YYACTIONTYPE yy_reduce(
 #line 194 "src/gemfile/parser.y"
 {
 }
-#line 2146 "src/gemfile/parser.c"
+#line 2170 "src/gemfile/parser.c"
 }
         break;
       case 62: /* stmt ::= github_stmt */
@@ -2151,7 +2175,7 @@ static YYACTIONTYPE yy_reduce(
 #line 195 "src/gemfile/parser.y"
 {
 }
-#line 2154 "src/gemfile/parser.c"
+#line 2178 "src/gemfile/parser.c"
 }
         break;
       case 63: /* stmt ::= install_if_stmt */
@@ -2159,7 +2183,7 @@ static YYACTIONTYPE yy_reduce(
 #line 196 "src/gemfile/parser.y"
 {
 }
-#line 2162 "src/gemfile/parser.c"
+#line 2186 "src/gemfile/parser.c"
 }
         break;
       case 66: /* name_list ::= name_list COMMA KEY LIT_TRUE */
@@ -2167,10 +2191,10 @@ static YYACTIONTYPE yy_reduce(
       case 68: /* name_list ::= name_list COMMA KEY STRING */ yytestcase(yyruleno==68);
       case 69: /* name_list ::= name_list COMMA KEY SYMBOL */ yytestcase(yyruleno==69);
 {  yy_destructor(yypParser,75,&yymsp[-3].minor);
-#line 659 "src/gemfile/parser.y"
+#line 683 "src/gemfile/parser.y"
 {
 }
-#line 2173 "src/gemfile/parser.c"
+#line 2197 "src/gemfile/parser.c"
 }
         break;
       case 71: /* block_kw_opts ::= block_kw_opts COMMA KEY STRING */
@@ -2178,45 +2202,45 @@ static YYACTIONTYPE yy_reduce(
       case 73: /* block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE */ yytestcase(yyruleno==73);
       case 74: /* block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE */ yytestcase(yyruleno==74);
 {  yy_destructor(yypParser,78,&yymsp[-3].minor);
-#line 703 "src/gemfile/parser.y"
+#line 727 "src/gemfile/parser.y"
 {
 }
-#line 2184 "src/gemfile/parser.c"
+#line 2208 "src/gemfile/parser.c"
 }
         break;
       case 75: /* path_stmt ::= PATH STRING block_kw_opts DO stmts END */
       case 76: /* git_stmt ::= GIT STRING block_kw_opts DO stmts END */ yytestcase(yyruleno==76);
       case 77: /* github_stmt ::= GITHUB STRING block_kw_opts DO stmts END */ yytestcase(yyruleno==77);
-#line 708 "src/gemfile/parser.y"
+#line 732 "src/gemfile/parser.y"
 {
 }
-#line 2193 "src/gemfile/parser.c"
+#line 2217 "src/gemfile/parser.c"
   yy_destructor(yypParser,78,&yymsp[-3].minor);
   yy_destructor(yypParser,59,&yymsp[-1].minor);
         break;
       case 78: /* install_if_stmt ::= INSTALL_IF DO stmts END */
-#line 716 "src/gemfile/parser.y"
+#line 740 "src/gemfile/parser.y"
 {
 }
-#line 2201 "src/gemfile/parser.c"
+#line 2225 "src/gemfile/parser.c"
   yy_destructor(yypParser,59,&yymsp[-1].minor);
         break;
       case 80: /* gemspec_opts ::= gemspec_opts COMMA KEY STRING */
       case 81: /* gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==81);
 {  yy_destructor(yypParser,79,&yymsp[-3].minor);
-#line 765 "src/gemfile/parser.y"
+#line 789 "src/gemfile/parser.y"
 {
 }
-#line 2210 "src/gemfile/parser.c"
+#line 2234 "src/gemfile/parser.c"
 }
         break;
       case 86: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
       case 87: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */ yytestcase(yyruleno==87);
 {  yy_destructor(yypParser,79,&yymsp[-4].minor);
-#line 775 "src/gemfile/parser.y"
+#line 799 "src/gemfile/parser.y"
 {
 }
-#line 2219 "src/gemfile/parser.c"
+#line 2243 "src/gemfile/parser.c"
 }
         break;
       default:
@@ -2275,7 +2299,7 @@ static void yy_parse_failed(
 #line 173 "src/gemfile/parser.y"
 
     fprintf(stderr, "wow: Gemfile parsing failed\n");
-#line 2278 "src/gemfile/parser.c"
+#line 2302 "src/gemfile/parser.c"
 /************ End %parse_failure code *****************************************/
   ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseCTX_STORE
@@ -2301,7 +2325,7 @@ static void yy_syntax_error(
     fprintf(stderr, "wow: Gemfile syntax error at line %d\n",
             TOKEN.line);
     gf->_deps_cap = (size_t)-1;  /* signal error */
-#line 2304 "src/gemfile/parser.c"
+#line 2328 "src/gemfile/parser.c"
 /************ End %syntax_error code ******************************************/
   ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseCTX_STORE

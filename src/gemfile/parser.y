@@ -616,29 +616,53 @@ group_open ::= GROUP LPAREN name_list RPAREN DO . {
 }
 
 group_stmt ::= group_open stmts END . {
+    /* Free current merged groups */
     for (int i = 0; i < gf->_n_current_groups; i++)
         free(gf->_current_groups[i]);
     free(gf->_current_groups);
-    gf->_current_groups = NULL;
-    gf->_n_current_groups = 0;
+    /* Pop parent groups from stack */
+    if (gf->_group_depth > 0) {
+        gf->_group_depth--;
+        gf->_current_groups = gf->_group_stack[gf->_group_depth].groups;
+        gf->_n_current_groups = gf->_group_stack[gf->_group_depth].n_groups;
+    } else {
+        gf->_current_groups = NULL;
+        gf->_n_current_groups = 0;
+    }
 }
 
 name_list ::= SYMBOL(S) . {
-    for (int i = 0; i < gf->_n_current_groups; i++)
-        free(gf->_current_groups[i]);
-    free(gf->_current_groups);
-    gf->_current_groups = malloc(sizeof(char *));
-    gf->_current_groups[0] = tok_strdup(S, 1, 0);
-    gf->_n_current_groups = 1;
+    /* Push current groups onto stack (for nested group restoration) */
+    if (gf->_group_depth < WOW_MAX_GROUP_DEPTH) {
+        gf->_group_stack[gf->_group_depth].groups = gf->_current_groups;
+        gf->_group_stack[gf->_group_depth].n_groups = gf->_n_current_groups;
+        gf->_group_depth++;
+    }
+    /* New current = copy of parent groups + this new group */
+    int pn = (gf->_group_depth > 0)
+        ? gf->_group_stack[gf->_group_depth - 1].n_groups : 0;
+    gf->_current_groups = malloc(sizeof(char *) * (size_t)(pn + 1));
+    for (int i = 0; i < pn; i++)
+        gf->_current_groups[i] = strdup(gf->_group_stack[gf->_group_depth - 1].groups[i]);
+    gf->_current_groups[pn] = tok_strdup(S, 1, 0);
+    gf->_n_current_groups = pn + 1;
 }
 
 name_list ::= STRING(S) . {
-    for (int i = 0; i < gf->_n_current_groups; i++)
-        free(gf->_current_groups[i]);
-    free(gf->_current_groups);
-    gf->_current_groups = malloc(sizeof(char *));
-    gf->_current_groups[0] = tok_strdup(S, 1, 1);
-    gf->_n_current_groups = 1;
+    /* Push current groups onto stack (for nested group restoration) */
+    if (gf->_group_depth < WOW_MAX_GROUP_DEPTH) {
+        gf->_group_stack[gf->_group_depth].groups = gf->_current_groups;
+        gf->_group_stack[gf->_group_depth].n_groups = gf->_n_current_groups;
+        gf->_group_depth++;
+    }
+    /* New current = copy of parent groups + this new group */
+    int pn = (gf->_group_depth > 0)
+        ? gf->_group_stack[gf->_group_depth - 1].n_groups : 0;
+    gf->_current_groups = malloc(sizeof(char *) * (size_t)(pn + 1));
+    for (int i = 0; i < pn; i++)
+        gf->_current_groups[i] = strdup(gf->_group_stack[gf->_group_depth - 1].groups[i]);
+    gf->_current_groups[pn] = tok_strdup(S, 1, 1);
+    gf->_n_current_groups = pn + 1;
 }
 
 name_list ::= name_list COMMA SYMBOL(S) . {
