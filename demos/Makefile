@@ -1,5 +1,5 @@
 # Top-level demos — delegates to phase subdirectories
-PHASES = phase0 phase2 phase3 phase5
+PHASES = phase0 phase2 phase3 phase5 phase6
 
 all: $(PHASES)
 

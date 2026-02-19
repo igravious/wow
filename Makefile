@@ -27,6 +27,7 @@ SRCS = $(wildcard src/*.c) \
        $(wildcard src/rubies/*.c) \
        $(wildcard src/gems/*.c) \
        $(wildcard src/gemfile/*.c) \
+       $(wildcard src/resolver/*.c) \
        $(wildcard src/util/*.c)
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
        $(BUILDDIR)/cJSON.o
@@ -35,7 +36,7 @@ OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
 -include $(OBJS:.o=.d)
 
 # Create subdirectories for object files
-OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/util $(BUILDDIR)/internal
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/resolver $(BUILDDIR)/util $(BUILDDIR)/internal
 
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
@@ -96,6 +97,9 @@ $(BUILDDIR)/gemfile/parser.o: src/gemfile/parser.c | $(BUILDDIR)/gemfile
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Isrc/gemfile \
 		-Wno-array-bounds -Wno-maybe-uninitialized -c $< -o $@
 
+$(BUILDDIR)/resolver/%.o: src/resolver/%.c | $(BUILDDIR)/resolver
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -c $< -o $@
+
 $(BUILDDIR)/util/%.o: src/util/%.c | $(BUILDDIR)/util
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Wno-unused-parameter -c $< -o $@
 
@@ -137,6 +141,9 @@ $(BUILDDIR)/gems: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/gemfile: | $(BUILDDIR)
+	mkdir -p $@
+
+$(BUILDDIR)/resolver: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/util: | $(BUILDDIR)
@@ -189,7 +196,21 @@ $(BUILDDIR)/gemfile_test.com: tests/gemfile_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) 
 test-gemfile: $(BUILDDIR)/gemfile_test.com
 	$(BUILDDIR)/gemfile_test.com
 
-test: test-tls test-registry test-ruby-mgr test-gem test-gemfile
+$(BUILDDIR)/resolver_test.com: tests/resolver_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
+
+test-resolver: $(BUILDDIR)/resolver_test.com
+	$(BUILDDIR)/resolver_test.com
+
+$(BUILDDIR)/arena_offset_test.com: tests/arena_offset_test.c $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP) | $(BUILDDIR)
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -o $@ $< $(TEST_HTTP_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
+	$(ZIPCOPY) $(ASSETS_ZIP) $@
+
+test-arena-offset: $(BUILDDIR)/arena_offset_test.com
+	$(BUILDDIR)/arena_offset_test.com
+
+test: test-tls test-registry test-ruby-mgr test-gem test-gemfile test-resolver test-arena-offset
 
 # --- Code generation (developer-only, outputs committed) ---
 generate-gemfile-parser:
@@ -231,4 +252,4 @@ fresh:
 distclean: clean
 	rm -f config.mk
 
-.PHONY: clean fresh distclean test test-tls test-registry test-ruby-mgr test-gem test-gemfile generate-gemfile-parser
+.PHONY: clean fresh distclean test test-tls test-registry test-ruby-mgr test-gem test-gemfile test-resolver test-arena-offset generate-gemfile-parser

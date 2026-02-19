@@ -13,6 +13,7 @@
 #include "wow/rubies.h"
 #include "wow/gems.h"
 #include "wow/gemfile.h"
+#include "wow/resolver.h"
 
 /* External verbose flag from http.c */
 extern int wow_http_debug;
@@ -125,12 +126,18 @@ static int cmd_debug_gemfile_lex(int argc, char *argv[]) {
     return wow_gemfile_lex_file(argv[1]) == 0 ? 0 : 1;
 }
 
+/* Declared in resolver/cmd.c */
+int cmd_debug_version_test(int argc, char *argv[]);
+int cmd_debug_pubgrub_test(int argc, char *argv[]);
+
 static void print_debug_usage(void) {
     printf("wow debug — Developer/debugging commands\n\n");
     printf("Usage: wow debug <subcommand> [args...]\n\n");
     printf("Subcommands:\n");
     printf("  bench-pool     Benchmark HTTP pool vs no-pool\n");
     printf("  gemfile-lex    Lex a Gemfile (tokenizer output)\n");
+    printf("  version-test   Run gem version parsing tests\n");
+    printf("  pubgrub-test   Run PubGrub resolver tests\n");
 }
 
 static int cmd_debug(int argc, char *argv[]) {
@@ -147,7 +154,13 @@ static int cmd_debug(int argc, char *argv[]) {
     if (strcmp(subcmd, "gemfile-lex") == 0) {
         return cmd_debug_gemfile_lex(argc - 1, argv + 1);
     }
-    
+    if (strcmp(subcmd, "version-test") == 0) {
+        return cmd_debug_version_test(argc - 1, argv + 1);
+    }
+    if (strcmp(subcmd, "pubgrub-test") == 0) {
+        return cmd_debug_pubgrub_test(argc - 1, argv + 1);
+    }
+
     fprintf(stderr, "unknown debug subcommand: %s\n\n", subcmd);
     print_debug_usage();
     return 1;
@@ -160,7 +173,8 @@ static const struct {
 } commands[] = {
     { "init",   "Create a new project",          cmd_init },
     { "sync",   "Install gems from Gemfile.lock", cmd_stub },
-    { "lock",   "Resolve and lock dependencies",  cmd_stub },
+    { "lock",   "Resolve and lock dependencies",  cmd_lock },
+    { "resolve", "Resolve gem dependencies",       cmd_resolve },
     { "add",    "Add a gem to Gemfile",           cmd_stub },
     { "remove", "Remove a gem from Gemfile",      cmd_stub },
     { "run",    "Run a command with bundled gems", cmd_stub },
