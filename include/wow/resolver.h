@@ -10,6 +10,7 @@
 #include "wow/resolver/arena.h"
 #include "wow/resolver/pubgrub.h"
 #include "wow/resolver/provider.h"
+#include "wow/resolver/lockfile.h"
 
 /* Forward declarations for CLI handlers */
 int cmd_resolve(int argc, char *argv[]);

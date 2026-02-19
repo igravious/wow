@@ -14,6 +14,7 @@
 #include "wow/gems.h"
 #include "wow/gemfile.h"
 #include "wow/resolver.h"
+#include "wow/sync.h"
 
 /* External verbose flag from http.c */
 extern int wow_http_debug;
@@ -25,6 +26,13 @@ typedef int (*cmd_fn)(int argc, char *argv[]);
 static int cmd_stub(int argc, char *argv[]) {
     (void)argc;
     printf("wow %s: not yet implemented\n", argv[0]);
+    return 1;
+}
+
+static int cmd_bundle(int argc, char *argv[]) {
+    if (argc >= 2 && strcmp(argv[1], "install") == 0)
+        return cmd_sync(argc - 1, argv + 1);
+    fprintf(stderr, "usage: wow bundle install\n");
     return 1;
 }
 
@@ -172,14 +180,14 @@ static const struct {
     cmd_fn      fn;
 } commands[] = {
     { "init",   "Create a new project",          cmd_init },
-    { "sync",   "Install gems from Gemfile.lock", cmd_stub },
+    { "sync",   "Install gems from Gemfile.lock", cmd_sync },
     { "lock",   "Resolve and lock dependencies",  cmd_lock },
     { "resolve", "Resolve gem dependencies",       cmd_resolve },
     { "add",    "Add a gem to Gemfile",           cmd_stub },
     { "remove", "Remove a gem from Gemfile",      cmd_stub },
     { "run",    "Run a command with bundled gems", cmd_stub },
     { "rubies", "Manage Ruby installations",      cmd_ruby },
-    { "bundle", "Bundler compatibility shim",     cmd_stub },
+    { "bundle", "Bundler compatibility shim",     cmd_bundle },
     { "curl",   "Fetch a URL (HTTP client)",      cmd_fetch },
     { "gem-info",    "Show gem info from rubygems",   cmd_gem_info },
     { "gem-download", "Download a .gem file",          cmd_gem_download },

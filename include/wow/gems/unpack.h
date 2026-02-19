@@ -15,4 +15,10 @@
  */
 int wow_gem_unpack(const char *gem_path, const char *dest_dir);
 
+/*
+ * Quiet variant — suppresses "Unpacked ..." output when quiet != 0.
+ * wow_gem_unpack() is equivalent to wow_gem_unpack_q(path, dest, 0).
+ */
+int wow_gem_unpack_q(const char *gem_path, const char *dest_dir, int quiet);
+
 #endif

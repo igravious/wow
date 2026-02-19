@@ -24,7 +24,7 @@
 #include "wow/internal/util.h"
 #include "wow/tar.h"
 
-int wow_gem_unpack(const char *gem_path, const char *dest_dir)
+int wow_gem_unpack_q(const char *gem_path, const char *dest_dir, int quiet)
 {
     int ret = -1;
     int fd = -1;
@@ -67,15 +67,17 @@ int wow_gem_unpack(const char *gem_path, const char *dest_dir)
         goto cleanup;
     }
 
-    const char *base = strrchr(gem_path, '/');
-    base = base ? base + 1 : gem_path;
+    if (!quiet) {
+        const char *base = strrchr(gem_path, '/');
+        base = base ? base + 1 : gem_path;
 
-    if (wow_use_colour()) {
-        fprintf(stderr, WOW_ANSI_DIM "Unpacked " WOW_ANSI_BOLD "%s"
-                WOW_ANSI_RESET WOW_ANSI_DIM " to %s" WOW_ANSI_RESET "\n",
-                base, dest_dir);
-    } else {
-        fprintf(stderr, "Unpacked %s to %s\n", base, dest_dir);
+        if (wow_use_colour()) {
+            fprintf(stderr, WOW_ANSI_DIM "Unpacked " WOW_ANSI_BOLD "%s"
+                    WOW_ANSI_RESET WOW_ANSI_DIM " to %s" WOW_ANSI_RESET "\n",
+                    base, dest_dir);
+        } else {
+            fprintf(stderr, "Unpacked %s to %s\n", base, dest_dir);
+        }
     }
 
     ret = 0;
@@ -86,4 +88,9 @@ cleanup:
     if (tmp_path[0] != '\0')
         unlink(tmp_path);
     return ret;
+}
+
+int wow_gem_unpack(const char *gem_path, const char *dest_dir)
+{
+    return wow_gem_unpack_q(gem_path, dest_dir, 0);
 }

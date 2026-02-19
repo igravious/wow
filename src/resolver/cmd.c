@@ -8,7 +8,6 @@
  *   wow debug pubgrub-test           — hardcoded PubGrub solver tests
  */
 
-#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -646,41 +645,11 @@ fail:
 /* wow lock [Gemfile] — resolve + write Gemfile.lock                    */
 /* ------------------------------------------------------------------ */
 
-/* Join an array of constraint strings with ", " into buf. */
-static void join_constraints(char **cs, int n, char *buf, size_t bufsz)
-{
-    buf[0] = '\0';
-    size_t off = 0;
-    for (int i = 0; i < n && off < bufsz - 1; i++) {
-        if (i > 0) {
-            int w = snprintf(buf + off, bufsz - off, ", ");
-            if (w > 0) off += (size_t)w;
-        }
-        int w = snprintf(buf + off, bufsz - off, "%s", cs[i]);
-        if (w > 0) off += (size_t)w;
-    }
-}
-
 /* qsort comparator for wow_resolved_pkg by name */
 static int resolved_cmp(const void *a, const void *b)
 {
     const wow_resolved_pkg *pa = a, *pb = b;
     return strcmp(pa->name, pb->name);
-}
-
-/* qsort comparator for sorting dep indices by name */
-struct dep_sort_entry { int idx; const char *name; };
-static int dep_sort_cmp(const void *a, const void *b)
-{
-    const struct dep_sort_entry *ea = a, *eb = b;
-    return strcmp(ea->name, eb->name);
-}
-
-/* qsort comparator for Gemfile deps by name */
-static int gemfile_dep_cmp(const void *a, const void *b)
-{
-    const struct wow_gemfile_dep *da = a, *db = b;
-    return strcmp(da->name, db->name);
 }
 
 int cmd_lock(int argc, char *argv[])
@@ -724,9 +693,9 @@ int cmd_lock(int argc, char *argv[])
 
         if (gf.deps[i].n_constraints > 0) {
             char joined[512];
-            join_constraints(gf.deps[i].constraints,
-                             gf.deps[i].n_constraints,
-                             joined, sizeof(joined));
+            wow_join_constraints(gf.deps[i].constraints,
+                                 gf.deps[i].n_constraints,
+                                 joined, sizeof(joined));
             if (wow_gem_constraints_parse(joined, &root_cs[i]) != 0) {
                 fprintf(stderr, "wow: invalid constraint for %s: %s\n",
                         gf.deps[i].name, joined);
@@ -771,10 +740,7 @@ int cmd_lock(int argc, char *argv[])
           sizeof(wow_resolved_pkg), resolved_cmp);
 
     /* 5. Write Gemfile.lock */
-    FILE *f = fopen("Gemfile.lock", "w");
-    if (!f) {
-        fprintf(stderr, "wow: cannot write Gemfile.lock: %s\n",
-                strerror(errno));
+    if (wow_write_lockfile("Gemfile.lock", &solver, &prov, &gf, source) != 0) {
         wow_solver_destroy(&solver);
         wow_ci_provider_destroy(&ci);
         wow_http_pool_cleanup(&pool);
@@ -783,82 +749,6 @@ int cmd_lock(int argc, char *argv[])
         return 1;
     }
 
-    /* GEM section */
-    fprintf(f, "GEM\n");
-    /* Ensure trailing slash on remote URL */
-    size_t slen = strlen(source);
-    if (slen > 0 && source[slen - 1] == '/')
-        fprintf(f, "  remote: %s\n", source);
-    else
-        fprintf(f, "  remote: %s/\n", source);
-    fprintf(f, "  specs:\n");
-
-    for (int i = 0; i < solver.n_solved; i++) {
-        fprintf(f, "    %s (%s)\n",
-                solver.solution[i].name,
-                solver.solution[i].version.raw);
-
-        /* Re-query deps from provider (still cached, no HTTP) */
-        const char **dep_names = NULL;
-        wow_gem_constraints *dep_cs_out = NULL;
-        int n_deps = 0;
-        if (prov.get_deps(prov.ctx,
-                          solver.solution[i].name,
-                          &solver.solution[i].version,
-                          &dep_names, &dep_cs_out,
-                          &n_deps) == 0 && n_deps > 0) {
-            /* Sort deps alphabetically (use index-based sort to
-             * avoid copying constraint structs) */
-            struct dep_sort_entry entries[128];
-            int n_ent = n_deps < 128 ? n_deps : 128;
-            for (int d = 0; d < n_ent; d++) {
-                entries[d].idx = d;
-                entries[d].name = dep_names[d];
-            }
-            qsort(entries, (size_t)n_ent, sizeof(entries[0]),
-                  dep_sort_cmp);
-
-            for (int d = 0; d < n_ent; d++) {
-                int di = entries[d].idx;
-                char cbuf[256];
-                wow_gem_constraints_fmt(&dep_cs_out[di], cbuf,
-                                        sizeof(cbuf));
-                if (cbuf[0] && strcmp(cbuf, ">= 0") != 0)
-                    fprintf(f, "      %s (%s)\n",
-                            dep_names[di], cbuf);
-                else
-                    fprintf(f, "      %s\n", dep_names[di]);
-            }
-        }
-    }
-
-    /* PLATFORMS section */
-    /* TODO: detect actual platforms from resolved gems */
-    fprintf(f, "\nPLATFORMS\n");
-    fprintf(f, "  ruby\n");
-
-    /* DEPENDENCIES section */
-    fprintf(f, "\nDEPENDENCIES\n");
-    /* Sort Gemfile deps alphabetically for output */
-    qsort(gf.deps, gf.n_deps, sizeof(struct wow_gemfile_dep),
-          gemfile_dep_cmp);
-    for (size_t i = 0; i < gf.n_deps; i++) {
-        if (gf.deps[i].n_constraints > 0) {
-            char joined[512];
-            join_constraints(gf.deps[i].constraints,
-                             gf.deps[i].n_constraints,
-                             joined, sizeof(joined));
-            fprintf(f, "  %s (%s)\n", gf.deps[i].name, joined);
-        } else {
-            fprintf(f, "  %s\n", gf.deps[i].name);
-        }
-    }
-
-    /* BUNDLED WITH section */
-    fprintf(f, "\nBUNDLED WITH\n");
-    fprintf(f, "  %s\n", WOW_VERSION);
-
-    fclose(f);
     printf("Wrote Gemfile.lock\n");
 
     /* Cleanup */
