@@ -1,11 +1,11 @@
 State 0:
           file ::= * stmts
           stmts ::= * stmts stmt
-     (36) stmts ::= *
+     (41) stmts ::= *
 
                           file accept
-                         stmts shift        4      
-                     {default} reduce       36     stmts ::=
+                         stmts shift        8      
+                     {default} reduce       41     stmts ::=
 
 State 1:
           stmts ::= stmts * stmt
@@ -16,6 +16,10 @@ State 1:
           stmt ::= * gemspec_stmt
           stmt ::= * platforms_stmt
           stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
           stmt ::= * GIT_SOURCE
           stmt ::= * NEWLINE
           source_stmt ::= * SOURCE STRING
@@ -23,38 +27,51 @@ State 1:
           source_stmt ::= * SOURCE STRING DO stmts END
           source_stmt ::= * SOURCE LPAREN STRING RPAREN
           gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
           group_open ::= * GROUP name_list DO
           group_open ::= * GROUP LPAREN name_list RPAREN DO
           group_stmt ::= * group_open stmts END
           platforms_open ::= * PLATFORMS platform_names DO
           platforms_stmt ::= * platforms_open stmts END
-          platforms_stmt ::= platforms_open stmts * END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
+          install_if_stmt ::= INSTALL_IF DO stmts * END
           ruby_stmt ::= * RUBY STRING ruby_opts
           ruby_stmt ::= * RUBY KEY STRING
           gemspec_stmt ::= * GEMSPEC gemspec_opts
           plugin_stmt ::= * PLUGIN STRING
           plugin_stmt ::= * PLUGIN STRING COMMA STRING
 
-                        SOURCE shift        18     
-                           GEM shift        47     
-                         GROUP shift        7      
-                           END shift-reduce 26     platforms_stmt ::= platforms_open stmts END
-                          RUBY shift        26     
-                       GEMSPEC shift        9      
-                       NEWLINE shift-reduce 45     stmt ::= NEWLINE
-                    GIT_SOURCE shift-reduce 44     stmt ::= GIT_SOURCE
-                        PLUGIN shift        37     
-                     PLATFORMS shift        11     
-                          stmt shift-reduce 35     stmts ::= stmts stmt
-                   source_stmt shift-reduce 35     stmts ::= stmts stmt  /* because source_stmt==stmt */
-                      gem_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gem_stmt==stmt */
-                    group_stmt shift-reduce 35     stmts ::= stmts stmt  /* because group_stmt==stmt */
-                     ruby_stmt shift-reduce 35     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
-                  gemspec_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
-                platforms_stmt shift-reduce 35     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
-                   plugin_stmt shift-reduce 35     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
-                    group_open shift        14     
-                platforms_open shift        13     
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 77     install_if_stmt ::= INSTALL_IF DO stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
 
 State 2:
           stmts ::= stmts * stmt
@@ -65,6 +82,10 @@ State 2:
           stmt ::= * gemspec_stmt
           stmt ::= * platforms_stmt
           stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
           stmt ::= * GIT_SOURCE
           stmt ::= * NEWLINE
           source_stmt ::= * SOURCE STRING
@@ -72,38 +93,51 @@ State 2:
           source_stmt ::= * SOURCE STRING DO stmts END
           source_stmt ::= * SOURCE LPAREN STRING RPAREN
           gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
           group_open ::= * GROUP name_list DO
           group_open ::= * GROUP LPAREN name_list RPAREN DO
           group_stmt ::= * group_open stmts END
-          group_stmt ::= group_open stmts * END
           platforms_open ::= * PLATFORMS platform_names DO
           platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          github_stmt ::= GITHUB STRING block_kw_opts DO stmts * END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
           ruby_stmt ::= * RUBY STRING ruby_opts
           ruby_stmt ::= * RUBY KEY STRING
           gemspec_stmt ::= * GEMSPEC gemspec_opts
           plugin_stmt ::= * PLUGIN STRING
           plugin_stmt ::= * PLUGIN STRING COMMA STRING
 
-                        SOURCE shift        18     
-                           GEM shift        47     
-                         GROUP shift        7      
-                           END shift-reduce 21     group_stmt ::= group_open stmts END
-                          RUBY shift        26     
-                       GEMSPEC shift        9      
-                       NEWLINE shift-reduce 45     stmt ::= NEWLINE
-                    GIT_SOURCE shift-reduce 44     stmt ::= GIT_SOURCE
-                        PLUGIN shift        37     
-                     PLATFORMS shift        11     
-                          stmt shift-reduce 35     stmts ::= stmts stmt
-                   source_stmt shift-reduce 35     stmts ::= stmts stmt  /* because source_stmt==stmt */
-                      gem_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gem_stmt==stmt */
-                    group_stmt shift-reduce 35     stmts ::= stmts stmt  /* because group_stmt==stmt */
-                     ruby_stmt shift-reduce 35     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
-                  gemspec_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
-                platforms_stmt shift-reduce 35     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
-                   plugin_stmt shift-reduce 35     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
-                    group_open shift        14     
-                platforms_open shift        13     
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 76     github_stmt ::= GITHUB STRING block_kw_opts DO stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
 
 State 3:
           stmts ::= stmts * stmt
@@ -114,48 +148,64 @@ State 3:
           stmt ::= * gemspec_stmt
           stmt ::= * platforms_stmt
           stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
           stmt ::= * GIT_SOURCE
           stmt ::= * NEWLINE
           source_stmt ::= * SOURCE STRING
           source_stmt ::= * SOURCE SYMBOL
           source_stmt ::= * SOURCE STRING DO stmts END
-          source_stmt ::= SOURCE STRING DO stmts * END
           source_stmt ::= * SOURCE LPAREN STRING RPAREN
           gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
           group_open ::= * GROUP name_list DO
           group_open ::= * GROUP LPAREN name_list RPAREN DO
           group_stmt ::= * group_open stmts END
           platforms_open ::= * PLATFORMS platform_names DO
           platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          git_stmt ::= GIT STRING block_kw_opts DO stmts * END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
           ruby_stmt ::= * RUBY STRING ruby_opts
           ruby_stmt ::= * RUBY KEY STRING
           gemspec_stmt ::= * GEMSPEC gemspec_opts
           plugin_stmt ::= * PLUGIN STRING
           plugin_stmt ::= * PLUGIN STRING COMMA STRING
 
-                        SOURCE shift        18     
-                           GEM shift        47     
-                         GROUP shift        7      
-                           END shift-reduce 2      source_stmt ::= SOURCE STRING DO stmts END
-                          RUBY shift        26     
-                       GEMSPEC shift        9      
-                       NEWLINE shift-reduce 45     stmt ::= NEWLINE
-                    GIT_SOURCE shift-reduce 44     stmt ::= GIT_SOURCE
-                        PLUGIN shift        37     
-                     PLATFORMS shift        11     
-                          stmt shift-reduce 35     stmts ::= stmts stmt
-                   source_stmt shift-reduce 35     stmts ::= stmts stmt  /* because source_stmt==stmt */
-                      gem_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gem_stmt==stmt */
-                    group_stmt shift-reduce 35     stmts ::= stmts stmt  /* because group_stmt==stmt */
-                     ruby_stmt shift-reduce 35     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
-                  gemspec_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
-                platforms_stmt shift-reduce 35     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
-                   plugin_stmt shift-reduce 35     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
-                    group_open shift        14     
-                platforms_open shift        13     
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 75     git_stmt ::= GIT STRING block_kw_opts DO stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
 
 State 4:
-     (34) file ::= stmts *
           stmts ::= stmts * stmt
           stmt ::= * source_stmt
           stmt ::= * gem_stmt
@@ -164,6 +214,10 @@ State 4:
           stmt ::= * gemspec_stmt
           stmt ::= * platforms_stmt
           stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
           stmt ::= * GIT_SOURCE
           stmt ::= * NEWLINE
           source_stmt ::= * SOURCE STRING
@@ -171,39 +225,317 @@ State 4:
           source_stmt ::= * SOURCE STRING DO stmts END
           source_stmt ::= * SOURCE LPAREN STRING RPAREN
           gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
           group_open ::= * GROUP name_list DO
           group_open ::= * GROUP LPAREN name_list RPAREN DO
           group_stmt ::= * group_open stmts END
           platforms_open ::= * PLATFORMS platform_names DO
           platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          path_stmt ::= PATH STRING block_kw_opts DO stmts * END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
           ruby_stmt ::= * RUBY STRING ruby_opts
           ruby_stmt ::= * RUBY KEY STRING
           gemspec_stmt ::= * GEMSPEC gemspec_opts
           plugin_stmt ::= * PLUGIN STRING
           plugin_stmt ::= * PLUGIN STRING COMMA STRING
 
-                             $ reduce       34     file ::= stmts
-                        SOURCE shift        18     
-                           GEM shift        47     
-                         GROUP shift        7      
-                          RUBY shift        26     
-                       GEMSPEC shift        9      
-                       NEWLINE shift-reduce 45     stmt ::= NEWLINE
-                    GIT_SOURCE shift-reduce 44     stmt ::= GIT_SOURCE
-                        PLUGIN shift        37     
-                     PLATFORMS shift        11     
-                          stmt shift-reduce 35     stmts ::= stmts stmt
-                   source_stmt shift-reduce 35     stmts ::= stmts stmt  /* because source_stmt==stmt */
-                      gem_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gem_stmt==stmt */
-                    group_stmt shift-reduce 35     stmts ::= stmts stmt  /* because group_stmt==stmt */
-                     ruby_stmt shift-reduce 35     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
-                  gemspec_stmt shift-reduce 35     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
-                platforms_stmt shift-reduce 35     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
-                   plugin_stmt shift-reduce 35     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
-                    group_open shift        14     
-                platforms_open shift        13     
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 74     path_stmt ::= PATH STRING block_kw_opts DO stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
 
 State 5:
+          stmts ::= stmts * stmt
+          stmt ::= * source_stmt
+          stmt ::= * gem_stmt
+          stmt ::= * group_stmt
+          stmt ::= * ruby_stmt
+          stmt ::= * gemspec_stmt
+          stmt ::= * platforms_stmt
+          stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
+          stmt ::= * GIT_SOURCE
+          stmt ::= * NEWLINE
+          source_stmt ::= * SOURCE STRING
+          source_stmt ::= * SOURCE SYMBOL
+          source_stmt ::= * SOURCE STRING DO stmts END
+          source_stmt ::= * SOURCE LPAREN STRING RPAREN
+          gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
+          group_open ::= * GROUP name_list DO
+          group_open ::= * GROUP LPAREN name_list RPAREN DO
+          group_stmt ::= * group_open stmts END
+          platforms_open ::= * PLATFORMS platform_names DO
+          platforms_stmt ::= * platforms_open stmts END
+          platforms_stmt ::= platforms_open stmts * END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
+          ruby_stmt ::= * RUBY STRING ruby_opts
+          ruby_stmt ::= * RUBY KEY STRING
+          gemspec_stmt ::= * GEMSPEC gemspec_opts
+          plugin_stmt ::= * PLUGIN STRING
+          plugin_stmt ::= * PLUGIN STRING COMMA STRING
+
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 31     platforms_stmt ::= platforms_open stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
+
+State 6:
+          stmts ::= stmts * stmt
+          stmt ::= * source_stmt
+          stmt ::= * gem_stmt
+          stmt ::= * group_stmt
+          stmt ::= * ruby_stmt
+          stmt ::= * gemspec_stmt
+          stmt ::= * platforms_stmt
+          stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
+          stmt ::= * GIT_SOURCE
+          stmt ::= * NEWLINE
+          source_stmt ::= * SOURCE STRING
+          source_stmt ::= * SOURCE SYMBOL
+          source_stmt ::= * SOURCE STRING DO stmts END
+          source_stmt ::= * SOURCE LPAREN STRING RPAREN
+          gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
+          group_open ::= * GROUP name_list DO
+          group_open ::= * GROUP LPAREN name_list RPAREN DO
+          group_stmt ::= * group_open stmts END
+          group_stmt ::= group_open stmts * END
+          platforms_open ::= * PLATFORMS platform_names DO
+          platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
+          ruby_stmt ::= * RUBY STRING ruby_opts
+          ruby_stmt ::= * RUBY KEY STRING
+          gemspec_stmt ::= * GEMSPEC gemspec_opts
+          plugin_stmt ::= * PLUGIN STRING
+          plugin_stmt ::= * PLUGIN STRING COMMA STRING
+
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 26     group_stmt ::= group_open stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
+
+State 7:
+          stmts ::= stmts * stmt
+          stmt ::= * source_stmt
+          stmt ::= * gem_stmt
+          stmt ::= * group_stmt
+          stmt ::= * ruby_stmt
+          stmt ::= * gemspec_stmt
+          stmt ::= * platforms_stmt
+          stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
+          stmt ::= * GIT_SOURCE
+          stmt ::= * NEWLINE
+          source_stmt ::= * SOURCE STRING
+          source_stmt ::= * SOURCE SYMBOL
+          source_stmt ::= * SOURCE STRING DO stmts END
+          source_stmt ::= SOURCE STRING DO stmts * END
+          source_stmt ::= * SOURCE LPAREN STRING RPAREN
+          gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
+          group_open ::= * GROUP name_list DO
+          group_open ::= * GROUP LPAREN name_list RPAREN DO
+          group_stmt ::= * group_open stmts END
+          platforms_open ::= * PLATFORMS platform_names DO
+          platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
+          ruby_stmt ::= * RUBY STRING ruby_opts
+          ruby_stmt ::= * RUBY KEY STRING
+          gemspec_stmt ::= * GEMSPEC gemspec_opts
+          plugin_stmt ::= * PLUGIN STRING
+          plugin_stmt ::= * PLUGIN STRING COMMA STRING
+
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                           END shift-reduce 2      source_stmt ::= SOURCE STRING DO stmts END
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
+
+State 8:
+     (39) file ::= stmts *
+          stmts ::= stmts * stmt
+          stmt ::= * source_stmt
+          stmt ::= * gem_stmt
+          stmt ::= * group_stmt
+          stmt ::= * ruby_stmt
+          stmt ::= * gemspec_stmt
+          stmt ::= * platforms_stmt
+          stmt ::= * plugin_stmt
+          stmt ::= * path_stmt
+          stmt ::= * git_stmt
+          stmt ::= * github_stmt
+          stmt ::= * install_if_stmt
+          stmt ::= * GIT_SOURCE
+          stmt ::= * NEWLINE
+          source_stmt ::= * SOURCE STRING
+          source_stmt ::= * SOURCE SYMBOL
+          source_stmt ::= * SOURCE STRING DO stmts END
+          source_stmt ::= * SOURCE LPAREN STRING RPAREN
+          gem_stmt ::= * GEM STRING gem_opts
+          gem_stmt ::= * GEM LPAREN STRING gem_opts RPAREN
+          group_open ::= * GROUP name_list DO
+          group_open ::= * GROUP LPAREN name_list RPAREN DO
+          group_stmt ::= * group_open stmts END
+          platforms_open ::= * PLATFORMS platform_names DO
+          platforms_stmt ::= * platforms_open stmts END
+          path_stmt ::= * PATH STRING block_kw_opts DO stmts END
+          git_stmt ::= * GIT STRING block_kw_opts DO stmts END
+          github_stmt ::= * GITHUB STRING block_kw_opts DO stmts END
+          install_if_stmt ::= * INSTALL_IF DO stmts END
+          ruby_stmt ::= * RUBY STRING ruby_opts
+          ruby_stmt ::= * RUBY KEY STRING
+          gemspec_stmt ::= * GEMSPEC gemspec_opts
+          plugin_stmt ::= * PLUGIN STRING
+          plugin_stmt ::= * PLUGIN STRING COMMA STRING
+
+                             $ reduce       39     file ::= stmts
+                        SOURCE shift        34     
+                           GEM shift        53     
+                         GROUP shift        12     
+                          RUBY shift        42     
+                       GEMSPEC shift        14     
+                       NEWLINE shift-reduce 54     stmt ::= NEWLINE
+                    GIT_SOURCE shift-reduce 53     stmt ::= GIT_SOURCE
+                        PLUGIN shift        58     
+                     PLATFORMS shift        16     
+                          PATH shift        68     
+                           GIT shift        66     
+                        GITHUB shift        65     
+                    INSTALL_IF shift        64     
+                          stmt shift-reduce 40     stmts ::= stmts stmt
+                   source_stmt shift-reduce 40     stmts ::= stmts stmt  /* because source_stmt==stmt */
+                      gem_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gem_stmt==stmt */
+                    group_stmt shift-reduce 40     stmts ::= stmts stmt  /* because group_stmt==stmt */
+                     ruby_stmt shift-reduce 40     stmts ::= stmts stmt  /* because ruby_stmt==stmt */
+                  gemspec_stmt shift-reduce 40     stmts ::= stmts stmt  /* because gemspec_stmt==stmt */
+                platforms_stmt shift-reduce 40     stmts ::= stmts stmt  /* because platforms_stmt==stmt */
+                   plugin_stmt shift-reduce 40     stmts ::= stmts stmt  /* because plugin_stmt==stmt */
+                     path_stmt shift-reduce 40     stmts ::= stmts stmt  /* because path_stmt==stmt */
+                      git_stmt shift-reduce 40     stmts ::= stmts stmt  /* because git_stmt==stmt */
+                   github_stmt shift-reduce 40     stmts ::= stmts stmt  /* because github_stmt==stmt */
+               install_if_stmt shift-reduce 40     stmts ::= stmts stmt  /* because install_if_stmt==stmt */
+                    group_open shift        27     
+                platforms_open shift        26     
+
+State 9:
           gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET * LIT_FALSE
           gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET * LIT_TRUE
           gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET * LIT_NIL
@@ -214,16 +546,16 @@ State 5:
           array ::= * LBRACKET RBRACKET
           array ::= * PERCENT_ARRAY
 
-                      LIT_TRUE shift-reduce 14     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE
-                     LIT_FALSE shift-reduce 13     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE
-                       LIT_NIL shift-reduce 15     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL
-                        STRING shift-reduce 17     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING
-                        SYMBOL shift-reduce 16     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL
-                      LBRACKET shift        8      
-                 PERCENT_ARRAY shift-reduce 48     array ::= PERCENT_ARRAY
-                         array shift-reduce 18     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array
+                      LIT_TRUE shift-reduce 15     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE
+                     LIT_FALSE shift-reduce 14     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE
+                       LIT_NIL shift-reduce 16     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL
+                        STRING shift-reduce 18     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING
+                        SYMBOL shift-reduce 17     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL
+                      LBRACKET shift        13     
+                 PERCENT_ARRAY shift-reduce 57     array ::= PERCENT_ARRAY
+                         array shift-reduce 19     gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array
 
-State 6:
+State 10:
           gem_opts ::= gem_opts COMMA KEY * LIT_FALSE
           gem_opts ::= gem_opts COMMA KEY * LIT_TRUE
           gem_opts ::= gem_opts COMMA KEY * LIT_NIL
@@ -234,132 +566,16 @@ State 6:
           array ::= * LBRACKET RBRACKET
           array ::= * PERCENT_ARRAY
 
-                      LIT_TRUE shift-reduce 8      gem_opts ::= gem_opts COMMA KEY LIT_TRUE
-                     LIT_FALSE shift-reduce 7      gem_opts ::= gem_opts COMMA KEY LIT_FALSE
-                       LIT_NIL shift-reduce 9      gem_opts ::= gem_opts COMMA KEY LIT_NIL
-                        STRING shift-reduce 11     gem_opts ::= gem_opts COMMA KEY STRING
-                        SYMBOL shift-reduce 10     gem_opts ::= gem_opts COMMA KEY SYMBOL
-                      LBRACKET shift        8      
-                 PERCENT_ARRAY shift-reduce 48     array ::= PERCENT_ARRAY
-                         array shift-reduce 12     gem_opts ::= gem_opts COMMA KEY array
-
-State 7:
-          group_open ::= GROUP * name_list DO
-          group_open ::= GROUP * LPAREN name_list RPAREN DO
-          name_list ::= * SYMBOL
-          name_list ::= * STRING
-          name_list ::= * name_list COMMA SYMBOL
-          name_list ::= * name_list COMMA STRING
-
-                        STRING shift-reduce 23     name_list ::= STRING
-                        SYMBOL shift-reduce 22     name_list ::= SYMBOL
-                        LPAREN shift        10     
-                     name_list shift        30     
-
-State 8:
-          array ::= LBRACKET * array_items RBRACKET
-          array ::= LBRACKET * RBRACKET
-          array_items ::= * SYMBOL
-          array_items ::= * STRING
-          array_items ::= * array_items COMMA SYMBOL
-          array_items ::= * array_items COMMA STRING
-
-                        STRING shift-reduce 50     array_items ::= STRING
-                        SYMBOL shift-reduce 49     array_items ::= SYMBOL
-                      RBRACKET shift-reduce 47     array ::= LBRACKET RBRACKET
-                   array_items shift        32     
-
-State 9:
-          gemspec_stmt ::= GEMSPEC * gemspec_opts
-     (56) gemspec_opts ::= *
-          gemspec_opts ::= * gemspec_opts COMMA KEY STRING
-          gemspec_opts ::= * gemspec_opts COMMA KEY SYMBOL
-          gemspec_opts ::= * KEY STRING
-          gemspec_opts ::= * KEY SYMBOL
-          gemspec_opts ::= * SYMBOL HASHROCKET STRING
-          gemspec_opts ::= * SYMBOL HASHROCKET SYMBOL
-          gemspec_opts ::= * gemspec_opts COMMA SYMBOL HASHROCKET STRING
-          gemspec_opts ::= * gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL
-
-                        SYMBOL shift        38     
-                           KEY shift        20     
-                  gemspec_opts shift        40     
-                     {default} reduce       56     gemspec_opts ::=
-
-State 10:
-          group_open ::= GROUP LPAREN * name_list RPAREN DO
-          name_list ::= * SYMBOL
-          name_list ::= * STRING
-          name_list ::= * name_list COMMA SYMBOL
-          name_list ::= * name_list COMMA STRING
-
-                        STRING shift-reduce 23     name_list ::= STRING
-                        SYMBOL shift-reduce 22     name_list ::= SYMBOL
-                     name_list shift        28     
+                      LIT_TRUE shift-reduce 9      gem_opts ::= gem_opts COMMA KEY LIT_TRUE
+                     LIT_FALSE shift-reduce 8      gem_opts ::= gem_opts COMMA KEY LIT_FALSE
+                       LIT_NIL shift-reduce 10     gem_opts ::= gem_opts COMMA KEY LIT_NIL
+                        STRING shift-reduce 12     gem_opts ::= gem_opts COMMA KEY STRING
+                        SYMBOL shift-reduce 11     gem_opts ::= gem_opts COMMA KEY SYMBOL
+                      LBRACKET shift        13     
+                 PERCENT_ARRAY shift-reduce 57     array ::= PERCENT_ARRAY
+                         array shift-reduce 13     gem_opts ::= gem_opts COMMA KEY array
 
 State 11:
-          platforms_open ::= PLATFORMS * platform_names DO
-          platform_names ::= * SYMBOL
-          platform_names ::= * platform_names COMMA SYMBOL
-
-                        SYMBOL shift-reduce 54     platform_names ::= SYMBOL
-                platform_names shift        27     
-
-State 12:
-          ruby_stmt ::= RUBY STRING * ruby_opts
-     (29) ruby_opts ::= *
-          ruby_opts ::= * ruby_opts COMMA KEY STRING
-          ruby_opts ::= * ruby_opts COMMA KEY SYMBOL
-          ruby_opts ::= * ruby_opts COMMA STRING
-
-                     ruby_opts shift        42     
-                     {default} reduce       29     ruby_opts ::=
-
-State 13:
-          stmts ::= * stmts stmt
-     (36) stmts ::= *
-          platforms_stmt ::= platforms_open * stmts END
-
-                         stmts shift        1      
-                     {default} reduce       36     stmts ::=
-
-State 14:
-          stmts ::= * stmts stmt
-     (36) stmts ::= *
-          group_stmt ::= group_open * stmts END
-
-                         stmts shift        2      
-                     {default} reduce       36     stmts ::=
-
-State 15:
-          gem_stmt ::= GEM STRING * gem_opts
-      (5) gem_opts ::= *
-          gem_opts ::= * gem_opts COMMA STRING
-          gem_opts ::= * gem_opts COMMA KEY LIT_FALSE
-          gem_opts ::= * gem_opts COMMA KEY LIT_TRUE
-          gem_opts ::= * gem_opts COMMA KEY LIT_NIL
-          gem_opts ::= * gem_opts COMMA KEY SYMBOL
-          gem_opts ::= * gem_opts COMMA KEY STRING
-          gem_opts ::= * gem_opts COMMA KEY array
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_NIL
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET SYMBOL
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET STRING
-          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET array
-
-                      gem_opts shift        46     
-                     {default} reduce       5      gem_opts ::=
-
-State 16:
-          stmts ::= * stmts stmt
-     (36) stmts ::= *
-          source_stmt ::= SOURCE STRING DO * stmts END
-
-                         stmts shift        3      
-                     {default} reduce       36     stmts ::=
-
-State 17:
           gem_opts ::= gem_opts COMMA * STRING
           gem_opts ::= gem_opts COMMA * KEY LIT_FALSE
           gem_opts ::= gem_opts COMMA * KEY LIT_TRUE
@@ -373,200 +589,560 @@ State 17:
           gem_opts ::= gem_opts COMMA * SYMBOL HASHROCKET SYMBOL
           gem_opts ::= gem_opts COMMA * SYMBOL HASHROCKET STRING
           gem_opts ::= gem_opts COMMA * SYMBOL HASHROCKET array
+          gem_opts ::= gem_opts COMMA * string_array
+          string_array ::= * LBRACKET string_array_items RBRACKET
 
-                        STRING shift-reduce 6      gem_opts ::= gem_opts COMMA STRING
-                        SYMBOL shift        45     
-                           KEY shift        6      
+                        STRING shift-reduce 7      gem_opts ::= gem_opts COMMA STRING
+                        SYMBOL shift        73     
+                           KEY shift        10     
+                      LBRACKET shift        17     
+                  string_array shift-reduce 20     gem_opts ::= gem_opts COMMA string_array
+
+State 12:
+          group_open ::= GROUP * name_list DO
+          group_open ::= GROUP * LPAREN name_list RPAREN DO
+          name_list ::= * SYMBOL
+          name_list ::= * STRING
+          name_list ::= * name_list COMMA SYMBOL
+          name_list ::= * name_list COMMA STRING
+          name_list ::= * name_list COMMA KEY LIT_TRUE
+          name_list ::= * name_list COMMA KEY LIT_FALSE
+          name_list ::= * name_list COMMA KEY STRING
+          name_list ::= * name_list COMMA KEY SYMBOL
+
+                        STRING shift-reduce 28     name_list ::= STRING
+                        SYMBOL shift-reduce 27     name_list ::= SYMBOL
+                        LPAREN shift        15     
+                     name_list shift        48     
+
+State 13:
+          array ::= LBRACKET * array_items RBRACKET
+          array ::= LBRACKET * RBRACKET
+          array_items ::= * SYMBOL
+          array_items ::= * STRING
+          array_items ::= * array_items COMMA SYMBOL
+          array_items ::= * array_items COMMA STRING
+
+                        STRING shift-reduce 59     array_items ::= STRING
+                        SYMBOL shift-reduce 58     array_items ::= SYMBOL
+                      RBRACKET shift-reduce 56     array ::= LBRACKET RBRACKET
+                   array_items shift        52     
+
+State 14:
+          gemspec_stmt ::= GEMSPEC * gemspec_opts
+     (78) gemspec_opts ::= *
+          gemspec_opts ::= * gemspec_opts COMMA KEY STRING
+          gemspec_opts ::= * gemspec_opts COMMA KEY SYMBOL
+          gemspec_opts ::= * KEY STRING
+          gemspec_opts ::= * KEY SYMBOL
+          gemspec_opts ::= * SYMBOL HASHROCKET STRING
+          gemspec_opts ::= * SYMBOL HASHROCKET SYMBOL
+          gemspec_opts ::= * gemspec_opts COMMA SYMBOL HASHROCKET STRING
+          gemspec_opts ::= * gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL
+
+                        SYMBOL shift        59     
+                           KEY shift        36     
+                  gemspec_opts shift        61     
+                     {default} reduce       78     gemspec_opts ::=
+
+State 15:
+          group_open ::= GROUP LPAREN * name_list RPAREN DO
+          name_list ::= * SYMBOL
+          name_list ::= * STRING
+          name_list ::= * name_list COMMA SYMBOL
+          name_list ::= * name_list COMMA STRING
+          name_list ::= * name_list COMMA KEY LIT_TRUE
+          name_list ::= * name_list COMMA KEY LIT_FALSE
+          name_list ::= * name_list COMMA KEY STRING
+          name_list ::= * name_list COMMA KEY SYMBOL
+
+                        STRING shift-reduce 28     name_list ::= STRING
+                        SYMBOL shift-reduce 27     name_list ::= SYMBOL
+                     name_list shift        47     
+
+State 16:
+          platforms_open ::= PLATFORMS * platform_names DO
+          platform_names ::= * SYMBOL
+          platform_names ::= * platform_names COMMA SYMBOL
+
+                        SYMBOL shift-reduce 67     platform_names ::= SYMBOL
+                platform_names shift        46     
+
+State 17:
+          string_array ::= LBRACKET * string_array_items RBRACKET
+          string_array_items ::= * STRING
+          string_array_items ::= * string_array_items COMMA STRING
+
+                        STRING shift-reduce 22     string_array_items ::= STRING
+            string_array_items shift        50     
 
 State 18:
+          ruby_stmt ::= RUBY STRING * ruby_opts
+     (34) ruby_opts ::= *
+          ruby_opts ::= * ruby_opts COMMA KEY STRING
+          ruby_opts ::= * ruby_opts COMMA KEY SYMBOL
+          ruby_opts ::= * ruby_opts COMMA STRING
+
+                     ruby_opts shift        63     
+                     {default} reduce       34     ruby_opts ::=
+
+State 19:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          install_if_stmt ::= INSTALL_IF DO * stmts END
+
+                         stmts shift        1      
+                     {default} reduce       41     stmts ::=
+
+State 20:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          github_stmt ::= GITHUB STRING block_kw_opts DO * stmts END
+
+                         stmts shift        2      
+                     {default} reduce       41     stmts ::=
+
+State 21:
+     (69) block_kw_opts ::= *
+          block_kw_opts ::= * block_kw_opts COMMA KEY STRING
+          block_kw_opts ::= * block_kw_opts COMMA KEY SYMBOL
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_TRUE
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_FALSE
+          github_stmt ::= GITHUB STRING * block_kw_opts DO stmts END
+
+                 block_kw_opts shift        43     
+                     {default} reduce       69     block_kw_opts ::=
+
+State 22:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          git_stmt ::= GIT STRING block_kw_opts DO * stmts END
+
+                         stmts shift        3      
+                     {default} reduce       41     stmts ::=
+
+State 23:
+     (69) block_kw_opts ::= *
+          block_kw_opts ::= * block_kw_opts COMMA KEY STRING
+          block_kw_opts ::= * block_kw_opts COMMA KEY SYMBOL
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_TRUE
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_FALSE
+          git_stmt ::= GIT STRING * block_kw_opts DO stmts END
+
+                 block_kw_opts shift        44     
+                     {default} reduce       69     block_kw_opts ::=
+
+State 24:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          path_stmt ::= PATH STRING block_kw_opts DO * stmts END
+
+                         stmts shift        4      
+                     {default} reduce       41     stmts ::=
+
+State 25:
+     (69) block_kw_opts ::= *
+          block_kw_opts ::= * block_kw_opts COMMA KEY STRING
+          block_kw_opts ::= * block_kw_opts COMMA KEY SYMBOL
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_TRUE
+          block_kw_opts ::= * block_kw_opts COMMA KEY LIT_FALSE
+          path_stmt ::= PATH STRING * block_kw_opts DO stmts END
+
+                 block_kw_opts shift        45     
+                     {default} reduce       69     block_kw_opts ::=
+
+State 26:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          platforms_stmt ::= platforms_open * stmts END
+
+                         stmts shift        5      
+                     {default} reduce       41     stmts ::=
+
+State 27:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          group_stmt ::= group_open * stmts END
+
+                         stmts shift        6      
+                     {default} reduce       41     stmts ::=
+
+State 28:
+          gem_stmt ::= GEM LPAREN STRING * gem_opts RPAREN
+      (6) gem_opts ::= *
+          gem_opts ::= * gem_opts COMMA STRING
+          gem_opts ::= * gem_opts COMMA KEY LIT_FALSE
+          gem_opts ::= * gem_opts COMMA KEY LIT_TRUE
+          gem_opts ::= * gem_opts COMMA KEY LIT_NIL
+          gem_opts ::= * gem_opts COMMA KEY SYMBOL
+          gem_opts ::= * gem_opts COMMA KEY STRING
+          gem_opts ::= * gem_opts COMMA KEY array
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_NIL
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET SYMBOL
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET STRING
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET array
+          gem_opts ::= * gem_opts COMMA string_array
+
+                      gem_opts shift        49     
+                     {default} reduce       6      gem_opts ::=
+
+State 29:
+          gem_stmt ::= GEM STRING * gem_opts
+      (6) gem_opts ::= *
+          gem_opts ::= * gem_opts COMMA STRING
+          gem_opts ::= * gem_opts COMMA KEY LIT_FALSE
+          gem_opts ::= * gem_opts COMMA KEY LIT_TRUE
+          gem_opts ::= * gem_opts COMMA KEY LIT_NIL
+          gem_opts ::= * gem_opts COMMA KEY SYMBOL
+          gem_opts ::= * gem_opts COMMA KEY STRING
+          gem_opts ::= * gem_opts COMMA KEY array
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET LIT_NIL
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET SYMBOL
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET STRING
+          gem_opts ::= * gem_opts COMMA SYMBOL HASHROCKET array
+          gem_opts ::= * gem_opts COMMA string_array
+
+                      gem_opts shift        74     
+                     {default} reduce       6      gem_opts ::=
+
+State 30:
+          stmts ::= * stmts stmt
+     (41) stmts ::= *
+          source_stmt ::= SOURCE STRING DO * stmts END
+
+                         stmts shift        7      
+                     {default} reduce       41     stmts ::=
+
+State 31:
+          block_kw_opts ::= block_kw_opts COMMA KEY * STRING
+          block_kw_opts ::= block_kw_opts COMMA KEY * SYMBOL
+          block_kw_opts ::= block_kw_opts COMMA KEY * LIT_TRUE
+          block_kw_opts ::= block_kw_opts COMMA KEY * LIT_FALSE
+
+                      LIT_TRUE shift-reduce 72     block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE
+                     LIT_FALSE shift-reduce 73     block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE
+                        STRING shift-reduce 70     block_kw_opts ::= block_kw_opts COMMA KEY STRING
+                        SYMBOL shift-reduce 71     block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL
+
+State 32:
+          name_list ::= name_list COMMA KEY * LIT_TRUE
+          name_list ::= name_list COMMA KEY * LIT_FALSE
+          name_list ::= name_list COMMA KEY * STRING
+          name_list ::= name_list COMMA KEY * SYMBOL
+
+                      LIT_TRUE shift-reduce 62     name_list ::= name_list COMMA KEY LIT_TRUE
+                     LIT_FALSE shift-reduce 63     name_list ::= name_list COMMA KEY LIT_FALSE
+                        STRING shift-reduce 64     name_list ::= name_list COMMA KEY STRING
+                        SYMBOL shift-reduce 65     name_list ::= name_list COMMA KEY SYMBOL
+
+State 33:
+          name_list ::= name_list COMMA * SYMBOL
+          name_list ::= name_list COMMA * STRING
+          name_list ::= name_list COMMA * KEY LIT_TRUE
+          name_list ::= name_list COMMA * KEY LIT_FALSE
+          name_list ::= name_list COMMA * KEY STRING
+          name_list ::= name_list COMMA * KEY SYMBOL
+
+                        STRING shift-reduce 30     name_list ::= name_list COMMA STRING
+                        SYMBOL shift-reduce 29     name_list ::= name_list COMMA SYMBOL
+                           KEY shift        32     
+
+State 34:
           source_stmt ::= SOURCE * STRING
           source_stmt ::= SOURCE * SYMBOL
           source_stmt ::= SOURCE * STRING DO stmts END
           source_stmt ::= SOURCE * LPAREN STRING RPAREN
 
-                        STRING shift        48     
+                        STRING shift        75     
                         SYMBOL shift-reduce 1      source_stmt ::= SOURCE SYMBOL
-                        LPAREN shift        34     
+                        LPAREN shift        55     
 
-State 19:
+State 35:
           gemspec_opts ::= SYMBOL HASHROCKET * STRING
           gemspec_opts ::= SYMBOL HASHROCKET * SYMBOL
 
-                        STRING shift-reduce 61     gemspec_opts ::= SYMBOL HASHROCKET STRING
-                        SYMBOL shift-reduce 62     gemspec_opts ::= SYMBOL HASHROCKET SYMBOL
+                        STRING shift-reduce 83     gemspec_opts ::= SYMBOL HASHROCKET STRING
+                        SYMBOL shift-reduce 84     gemspec_opts ::= SYMBOL HASHROCKET SYMBOL
 
-State 20:
+State 36:
           gemspec_opts ::= KEY * STRING
           gemspec_opts ::= KEY * SYMBOL
 
-                        STRING shift-reduce 59     gemspec_opts ::= KEY STRING
-                        SYMBOL shift-reduce 60     gemspec_opts ::= KEY SYMBOL
+                        STRING shift-reduce 81     gemspec_opts ::= KEY STRING
+                        SYMBOL shift-reduce 82     gemspec_opts ::= KEY SYMBOL
 
-State 21:
+State 37:
           gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET * STRING
           gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET * SYMBOL
 
-                        STRING shift-reduce 63     gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING
-                        SYMBOL shift-reduce 64     gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL
+                        STRING shift-reduce 85     gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING
+                        SYMBOL shift-reduce 86     gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL
 
-State 22:
+State 38:
           gemspec_opts ::= gemspec_opts COMMA KEY * STRING
           gemspec_opts ::= gemspec_opts COMMA KEY * SYMBOL
 
-                        STRING shift-reduce 57     gemspec_opts ::= gemspec_opts COMMA KEY STRING
-                        SYMBOL shift-reduce 58     gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL
+                        STRING shift-reduce 79     gemspec_opts ::= gemspec_opts COMMA KEY STRING
+                        SYMBOL shift-reduce 80     gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL
 
-State 23:
+State 39:
           gemspec_opts ::= gemspec_opts COMMA * KEY STRING
           gemspec_opts ::= gemspec_opts COMMA * KEY SYMBOL
           gemspec_opts ::= gemspec_opts COMMA * SYMBOL HASHROCKET STRING
           gemspec_opts ::= gemspec_opts COMMA * SYMBOL HASHROCKET SYMBOL
 
-                        SYMBOL shift        39     
-                           KEY shift        22     
+                        SYMBOL shift        60     
+                           KEY shift        38     
 
-State 24:
+State 40:
           ruby_opts ::= ruby_opts COMMA KEY * STRING
           ruby_opts ::= ruby_opts COMMA KEY * SYMBOL
 
-                        STRING shift-reduce 30     ruby_opts ::= ruby_opts COMMA KEY STRING
-                        SYMBOL shift-reduce 31     ruby_opts ::= ruby_opts COMMA KEY SYMBOL
+                        STRING shift-reduce 35     ruby_opts ::= ruby_opts COMMA KEY STRING
+                        SYMBOL shift-reduce 36     ruby_opts ::= ruby_opts COMMA KEY SYMBOL
 
-State 25:
+State 41:
           ruby_opts ::= ruby_opts COMMA * KEY STRING
           ruby_opts ::= ruby_opts COMMA * KEY SYMBOL
           ruby_opts ::= ruby_opts COMMA * STRING
 
-                        STRING shift-reduce 32     ruby_opts ::= ruby_opts COMMA STRING
-                           KEY shift        24     
+                        STRING shift-reduce 37     ruby_opts ::= ruby_opts COMMA STRING
+                           KEY shift        40     
 
-State 26:
+State 42:
           ruby_stmt ::= RUBY * STRING ruby_opts
           ruby_stmt ::= RUBY * KEY STRING
 
-                        STRING shift        12     
-                           KEY shift        41     
+                        STRING shift        18     
+                           KEY shift        62     
 
-State 27:
+State 43:
+          block_kw_opts ::= block_kw_opts * COMMA KEY STRING
+          block_kw_opts ::= block_kw_opts * COMMA KEY SYMBOL
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_TRUE
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_FALSE
+          github_stmt ::= GITHUB STRING block_kw_opts * DO stmts END
+
+                            DO shift        20     
+                         COMMA shift        67     
+
+State 44:
+          block_kw_opts ::= block_kw_opts * COMMA KEY STRING
+          block_kw_opts ::= block_kw_opts * COMMA KEY SYMBOL
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_TRUE
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_FALSE
+          git_stmt ::= GIT STRING block_kw_opts * DO stmts END
+
+                            DO shift        22     
+                         COMMA shift        67     
+
+State 45:
+          block_kw_opts ::= block_kw_opts * COMMA KEY STRING
+          block_kw_opts ::= block_kw_opts * COMMA KEY SYMBOL
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_TRUE
+          block_kw_opts ::= block_kw_opts * COMMA KEY LIT_FALSE
+          path_stmt ::= PATH STRING block_kw_opts * DO stmts END
+
+                            DO shift        24     
+                         COMMA shift        67     
+
+State 46:
           platforms_open ::= PLATFORMS platform_names * DO
           platform_names ::= platform_names * COMMA SYMBOL
 
-                            DO shift-reduce 53     platforms_open ::= PLATFORMS platform_names DO
-                         COMMA shift        43     
+                            DO shift-reduce 66     platforms_open ::= PLATFORMS platform_names DO
+                         COMMA shift        69     
 
-State 28:
+State 47:
           group_open ::= GROUP LPAREN name_list * RPAREN DO
           name_list ::= name_list * COMMA SYMBOL
           name_list ::= name_list * COMMA STRING
+          name_list ::= name_list * COMMA KEY LIT_TRUE
+          name_list ::= name_list * COMMA KEY LIT_FALSE
+          name_list ::= name_list * COMMA KEY STRING
+          name_list ::= name_list * COMMA KEY SYMBOL
 
-                         COMMA shift        29     
-                        RPAREN shift        44     
+                         COMMA shift        33     
+                        RPAREN shift        70     
 
-State 29:
-          name_list ::= name_list COMMA * SYMBOL
-          name_list ::= name_list COMMA * STRING
-
-                        STRING shift-reduce 25     name_list ::= name_list COMMA STRING
-                        SYMBOL shift-reduce 24     name_list ::= name_list COMMA SYMBOL
-
-State 30:
+State 48:
           group_open ::= GROUP name_list * DO
           name_list ::= name_list * COMMA SYMBOL
           name_list ::= name_list * COMMA STRING
+          name_list ::= name_list * COMMA KEY LIT_TRUE
+          name_list ::= name_list * COMMA KEY LIT_FALSE
+          name_list ::= name_list * COMMA KEY STRING
+          name_list ::= name_list * COMMA KEY SYMBOL
 
-                            DO shift-reduce 19     group_open ::= GROUP name_list DO
-                         COMMA shift        29     
+                            DO shift-reduce 24     group_open ::= GROUP name_list DO
+                         COMMA shift        33     
 
-State 31:
+State 49:
+          gem_stmt ::= GEM LPAREN STRING gem_opts * RPAREN
+          gem_opts ::= gem_opts * COMMA STRING
+          gem_opts ::= gem_opts * COMMA KEY LIT_FALSE
+          gem_opts ::= gem_opts * COMMA KEY LIT_TRUE
+          gem_opts ::= gem_opts * COMMA KEY LIT_NIL
+          gem_opts ::= gem_opts * COMMA KEY SYMBOL
+          gem_opts ::= gem_opts * COMMA KEY STRING
+          gem_opts ::= gem_opts * COMMA KEY array
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET LIT_FALSE
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET LIT_TRUE
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET LIT_NIL
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET SYMBOL
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET STRING
+          gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET array
+          gem_opts ::= gem_opts * COMMA string_array
+
+                         COMMA shift        11     
+                        RPAREN shift-reduce 5      gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN
+
+State 50:
+          string_array ::= LBRACKET string_array_items * RBRACKET
+          string_array_items ::= string_array_items * COMMA STRING
+
+                         COMMA shift        72     
+                      RBRACKET shift-reduce 21     string_array ::= LBRACKET string_array_items RBRACKET
+
+State 51:
           array_items ::= array_items COMMA * SYMBOL
           array_items ::= array_items COMMA * STRING
 
-                        STRING shift-reduce 52     array_items ::= array_items COMMA STRING
-                        SYMBOL shift-reduce 51     array_items ::= array_items COMMA SYMBOL
+                        STRING shift-reduce 61     array_items ::= array_items COMMA STRING
+                        SYMBOL shift-reduce 60     array_items ::= array_items COMMA SYMBOL
 
-State 32:
+State 52:
           array ::= LBRACKET array_items * RBRACKET
           array_items ::= array_items * COMMA SYMBOL
           array_items ::= array_items * COMMA STRING
 
-                         COMMA shift        31     
-                      RBRACKET shift-reduce 46     array ::= LBRACKET array_items RBRACKET
+                         COMMA shift        51     
+                      RBRACKET shift-reduce 55     array ::= LBRACKET array_items RBRACKET
 
-State 33:
+State 53:
+          gem_stmt ::= GEM * STRING gem_opts
+          gem_stmt ::= GEM * LPAREN STRING gem_opts RPAREN
+
+                        STRING shift        29     
+                        LPAREN shift        71     
+
+State 54:
           source_stmt ::= SOURCE LPAREN STRING * RPAREN
 
                         RPAREN shift-reduce 3      source_stmt ::= SOURCE LPAREN STRING RPAREN
 
-State 34:
+State 55:
           source_stmt ::= SOURCE LPAREN * STRING RPAREN
 
-                        STRING shift        33     
+                        STRING shift        54     
 
-State 35:
+State 56:
           plugin_stmt ::= PLUGIN STRING COMMA * STRING
 
-                        STRING shift-reduce 66     plugin_stmt ::= PLUGIN STRING COMMA STRING
+                        STRING shift-reduce 88     plugin_stmt ::= PLUGIN STRING COMMA STRING
 
-State 36:
-     (65) plugin_stmt ::= PLUGIN STRING *
+State 57:
+     (87) plugin_stmt ::= PLUGIN STRING *
           plugin_stmt ::= PLUGIN STRING * COMMA STRING
 
-                         COMMA shift        35     
-                     {default} reduce       65     plugin_stmt ::= PLUGIN STRING
+                         COMMA shift        56     
+                     {default} reduce       87     plugin_stmt ::= PLUGIN STRING
 
-State 37:
+State 58:
           plugin_stmt ::= PLUGIN * STRING
           plugin_stmt ::= PLUGIN * STRING COMMA STRING
 
-                        STRING shift        36     
+                        STRING shift        57     
 
-State 38:
+State 59:
           gemspec_opts ::= SYMBOL * HASHROCKET STRING
           gemspec_opts ::= SYMBOL * HASHROCKET SYMBOL
 
-                    HASHROCKET shift        19     
+                    HASHROCKET shift        35     
 
-State 39:
+State 60:
           gemspec_opts ::= gemspec_opts COMMA SYMBOL * HASHROCKET STRING
           gemspec_opts ::= gemspec_opts COMMA SYMBOL * HASHROCKET SYMBOL
 
-                    HASHROCKET shift        21     
+                    HASHROCKET shift        37     
 
-State 40:
-     (33) gemspec_stmt ::= GEMSPEC gemspec_opts *
+State 61:
+     (38) gemspec_stmt ::= GEMSPEC gemspec_opts *
           gemspec_opts ::= gemspec_opts * COMMA KEY STRING
           gemspec_opts ::= gemspec_opts * COMMA KEY SYMBOL
           gemspec_opts ::= gemspec_opts * COMMA SYMBOL HASHROCKET STRING
           gemspec_opts ::= gemspec_opts * COMMA SYMBOL HASHROCKET SYMBOL
 
-                         COMMA shift        23     
-                     {default} reduce       33     gemspec_stmt ::= GEMSPEC gemspec_opts
+                         COMMA shift        39     
+                     {default} reduce       38     gemspec_stmt ::= GEMSPEC gemspec_opts
 
-State 41:
+State 62:
           ruby_stmt ::= RUBY KEY * STRING
 
-                        STRING shift-reduce 28     ruby_stmt ::= RUBY KEY STRING
+                        STRING shift-reduce 33     ruby_stmt ::= RUBY KEY STRING
 
-State 42:
-     (27) ruby_stmt ::= RUBY STRING ruby_opts *
+State 63:
+     (32) ruby_stmt ::= RUBY STRING ruby_opts *
           ruby_opts ::= ruby_opts * COMMA KEY STRING
           ruby_opts ::= ruby_opts * COMMA KEY SYMBOL
           ruby_opts ::= ruby_opts * COMMA STRING
 
-                         COMMA shift        25     
-                     {default} reduce       27     ruby_stmt ::= RUBY STRING ruby_opts
+                         COMMA shift        41     
+                     {default} reduce       32     ruby_stmt ::= RUBY STRING ruby_opts
 
-State 43:
+State 64:
+          install_if_stmt ::= INSTALL_IF * DO stmts END
+
+                            DO shift        19     
+
+State 65:
+          github_stmt ::= GITHUB * STRING block_kw_opts DO stmts END
+
+                        STRING shift        21     
+
+State 66:
+          git_stmt ::= GIT * STRING block_kw_opts DO stmts END
+
+                        STRING shift        23     
+
+State 67:
+          block_kw_opts ::= block_kw_opts COMMA * KEY STRING
+          block_kw_opts ::= block_kw_opts COMMA * KEY SYMBOL
+          block_kw_opts ::= block_kw_opts COMMA * KEY LIT_TRUE
+          block_kw_opts ::= block_kw_opts COMMA * KEY LIT_FALSE
+
+                           KEY shift        31     
+
+State 68:
+          path_stmt ::= PATH * STRING block_kw_opts DO stmts END
+
+                        STRING shift        25     
+
+State 69:
           platform_names ::= platform_names COMMA * SYMBOL
 
-                        SYMBOL shift-reduce 55     platform_names ::= platform_names COMMA SYMBOL
+                        SYMBOL shift-reduce 68     platform_names ::= platform_names COMMA SYMBOL
 
-State 44:
+State 70:
           group_open ::= GROUP LPAREN name_list RPAREN * DO
 
-                            DO shift-reduce 20     group_open ::= GROUP LPAREN name_list RPAREN DO
+                            DO shift-reduce 25     group_open ::= GROUP LPAREN name_list RPAREN DO
 
-State 45:
+State 71:
+          gem_stmt ::= GEM LPAREN * STRING gem_opts RPAREN
+
+                        STRING shift        28     
+
+State 72:
+          string_array_items ::= string_array_items COMMA * STRING
+
+                        STRING shift-reduce 23     string_array_items ::= string_array_items COMMA STRING
+
+State 73:
           gem_opts ::= gem_opts COMMA SYMBOL * HASHROCKET LIT_FALSE
           gem_opts ::= gem_opts COMMA SYMBOL * HASHROCKET LIT_TRUE
           gem_opts ::= gem_opts COMMA SYMBOL * HASHROCKET LIT_NIL
@@ -574,9 +1150,9 @@ State 45:
           gem_opts ::= gem_opts COMMA SYMBOL * HASHROCKET STRING
           gem_opts ::= gem_opts COMMA SYMBOL * HASHROCKET array
 
-                    HASHROCKET shift        5      
+                    HASHROCKET shift        9      
 
-State 46:
+State 74:
       (4) gem_stmt ::= GEM STRING gem_opts *
           gem_opts ::= gem_opts * COMMA STRING
           gem_opts ::= gem_opts * COMMA KEY LIT_FALSE
@@ -591,20 +1167,16 @@ State 46:
           gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET SYMBOL
           gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET STRING
           gem_opts ::= gem_opts * COMMA SYMBOL HASHROCKET array
+          gem_opts ::= gem_opts * COMMA string_array
 
-                         COMMA shift        17     
+                         COMMA shift        11     
                      {default} reduce       4      gem_stmt ::= GEM STRING gem_opts
 
-State 47:
-          gem_stmt ::= GEM * STRING gem_opts
-
-                        STRING shift        15     
-
-State 48:
+State 75:
       (0) source_stmt ::= SOURCE STRING *
           source_stmt ::= SOURCE STRING * DO stmts END
 
-                            DO shift        16     
+                            DO shift        30     
                      {default} reduce       0      source_stmt ::= SOURCE STRING
 
 ----------------------------------------------------
@@ -634,63 +1206,75 @@ The first-set of non-terminals is shown after the name.
    20: GIT_SOURCE
    21: PLUGIN
    22: PLATFORMS
-   23: LBRACKET
-   24: RBRACKET
-   25: LPAREN
-   26: RPAREN
-   27: PERCENT_ARRAY
-   28: IF
-   29: UNLESS
-   30: ELSE
-   31: ELSIF
-   32: EVAL_GEMFILE
-   33: EQ
-   34: NEQ
-   35: GTE
-   36: LTE
-   37: GT
-   38: LT
-   39: MATCH
-   40: AND
-   41: OR
-   42: BANG
-   43: ASSIGN
-   44: DOT
-   45: COLON_COLON
-   46: PIPE
-   47: QUESTION
-   48: INTEGER
-   49: FLOAT_LIT
-   50: gem_opts: <lambda> COMMA
-   51: ruby_opts: <lambda> COMMA
-   52: file: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   53: stmts: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   54: stmt: SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS
-   55: source_stmt: SOURCE
-   56: gem_stmt: GEM
-   57: group_stmt: GROUP
-   58: ruby_stmt: RUBY
-   59: gemspec_stmt: GEMSPEC
-   60: platforms_stmt: PLATFORMS
-   61: plugin_stmt: PLUGIN
-   62: array: LBRACKET PERCENT_ARRAY
-   63: array_items: STRING SYMBOL
-   64: group_open: GROUP
-   65: name_list: STRING SYMBOL
-   66: platforms_open: PLATFORMS
-   67: platform_names: SYMBOL
-   68: gemspec_opts: <lambda> SYMBOL KEY COMMA
+   23: PATH
+   24: GIT
+   25: GITHUB
+   26: INSTALL_IF
+   27: LBRACKET
+   28: RBRACKET
+   29: LPAREN
+   30: RPAREN
+   31: PERCENT_ARRAY
+   32: IF
+   33: UNLESS
+   34: ELSE
+   35: ELSIF
+   36: EVAL_GEMFILE
+   37: EQ
+   38: NEQ
+   39: GTE
+   40: LTE
+   41: GT
+   42: LT
+   43: MATCH
+   44: AND
+   45: OR
+   46: BANG
+   47: ASSIGN
+   48: DOT
+   49: COLON_COLON
+   50: PIPE
+   51: QUESTION
+   52: INTEGER
+   53: FLOAT_LIT
+   54: gem_opts: <lambda> COMMA
+   55: ruby_opts: <lambda> COMMA
+   56: string_array: LBRACKET
+   57: string_array_items: STRING
+   58: file: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS PATH GIT GITHUB INSTALL_IF
+   59: stmts: <lambda> SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS PATH GIT GITHUB INSTALL_IF
+   60: stmt: SOURCE GEM GROUP RUBY GEMSPEC NEWLINE GIT_SOURCE PLUGIN PLATFORMS PATH GIT GITHUB INSTALL_IF
+   61: source_stmt: SOURCE
+   62: gem_stmt: GEM
+   63: group_stmt: GROUP
+   64: ruby_stmt: RUBY
+   65: gemspec_stmt: GEMSPEC
+   66: platforms_stmt: PLATFORMS
+   67: plugin_stmt: PLUGIN
+   68: path_stmt: PATH
+   69: git_stmt: GIT
+   70: github_stmt: GITHUB
+   71: install_if_stmt: INSTALL_IF
+   72: array: LBRACKET PERCENT_ARRAY
+   73: array_items: STRING SYMBOL
+   74: group_open: GROUP
+   75: name_list: STRING SYMBOL
+   76: platforms_open: PLATFORMS
+   77: platform_names: SYMBOL
+   78: block_kw_opts: <lambda> COMMA
+   79: gemspec_opts: <lambda> SYMBOL KEY COMMA
 ----------------------------------------------------
 Syntax-only Symbols:
 The following symbols never carry semantic content.
 
 $ SOURCE GEM GROUP DO END RUBY GEMSPEC LIT_TRUE LIT_FALSE LIT_NIL COMMA
-HASHROCKET NEWLINE IDENT UNSUPPORTED ERROR GIT_SOURCE PLUGIN PLATFORMS
-LBRACKET RBRACKET LPAREN RPAREN PERCENT_ARRAY IF UNLESS ELSE ELSIF
-EVAL_GEMFILE EQ NEQ GTE LTE GT LT MATCH AND OR BANG ASSIGN DOT COLON_COLON
-PIPE QUESTION INTEGER FLOAT_LIT file stmts stmt source_stmt gem_stmt
-group_stmt ruby_stmt gemspec_stmt platforms_stmt plugin_stmt array
-array_items group_open name_list platforms_open platform_names gemspec_opts
+HASHROCKET NEWLINE IDENT UNSUPPORTED ERROR GIT_SOURCE PLUGIN PLATFORMS PATH
+GIT GITHUB INSTALL_IF LBRACKET RBRACKET LPAREN RPAREN PERCENT_ARRAY IF
+UNLESS ELSE ELSIF EVAL_GEMFILE EQ NEQ GTE LTE GT LT MATCH AND OR BANG ASSIGN
+DOT COLON_COLON PIPE QUESTION INTEGER FLOAT_LIT file stmts stmt source_stmt
+gem_stmt group_stmt ruby_stmt gemspec_stmt platforms_stmt plugin_stmt
+path_stmt git_stmt github_stmt install_if_stmt array array_items group_open
+name_list platforms_open platform_names block_kw_opts gemspec_opts
 ----------------------------------------------------
 Rules:
    0: source_stmt ::= SOURCE STRING.
@@ -698,65 +1282,87 @@ Rules:
    2: source_stmt ::= SOURCE STRING DO stmts END.
    3: source_stmt ::= SOURCE LPAREN STRING RPAREN.
    4: gem_stmt ::= GEM STRING gem_opts.
-   5: gem_opts ::=.
-   6: gem_opts ::= gem_opts COMMA STRING.
-   7: gem_opts ::= gem_opts COMMA KEY LIT_FALSE.
-   8: gem_opts ::= gem_opts COMMA KEY LIT_TRUE.
-   9: gem_opts ::= gem_opts COMMA KEY LIT_NIL.
-  10: gem_opts ::= gem_opts COMMA KEY SYMBOL.
-  11: gem_opts ::= gem_opts COMMA KEY STRING.
-  12: gem_opts ::= gem_opts COMMA KEY array.
-  13: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE.
-  14: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE.
-  15: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL.
-  16: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL.
-  17: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING.
-  18: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array.
-  19: group_open ::= GROUP name_list DO.
-  20: group_open ::= GROUP LPAREN name_list RPAREN DO.
-  21: group_stmt ::= group_open stmts END.
-  22: name_list ::= SYMBOL.
-  23: name_list ::= STRING.
-  24: name_list ::= name_list COMMA SYMBOL.
-  25: name_list ::= name_list COMMA STRING.
-  26: platforms_stmt ::= platforms_open stmts END.
-  27: ruby_stmt ::= RUBY STRING ruby_opts.
-  28: ruby_stmt ::= RUBY KEY STRING.
-  29: ruby_opts ::=.
-  30: ruby_opts ::= ruby_opts COMMA KEY STRING.
-  31: ruby_opts ::= ruby_opts COMMA KEY SYMBOL.
-  32: ruby_opts ::= ruby_opts COMMA STRING.
-  33: gemspec_stmt ::= GEMSPEC gemspec_opts.
-  34: file ::= stmts.
-  35: stmts ::= stmts stmt.
-  36: stmts ::=.
-  37: stmt ::= source_stmt.
-  38: stmt ::= gem_stmt.
-  39: stmt ::= group_stmt.
-  40: stmt ::= ruby_stmt.
-  41: stmt ::= gemspec_stmt.
-  42: stmt ::= platforms_stmt.
-  43: stmt ::= plugin_stmt.
-  44: stmt ::= GIT_SOURCE.
-  45: stmt ::= NEWLINE.
-  46: array ::= LBRACKET array_items RBRACKET.
-  47: array ::= LBRACKET RBRACKET.
-  48: array ::= PERCENT_ARRAY.
-  49: array_items ::= SYMBOL.
-  50: array_items ::= STRING.
-  51: array_items ::= array_items COMMA SYMBOL.
-  52: array_items ::= array_items COMMA STRING.
-  53: platforms_open ::= PLATFORMS platform_names DO.
-  54: platform_names ::= SYMBOL.
-  55: platform_names ::= platform_names COMMA SYMBOL.
-  56: gemspec_opts ::=.
-  57: gemspec_opts ::= gemspec_opts COMMA KEY STRING.
-  58: gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL.
-  59: gemspec_opts ::= KEY STRING.
-  60: gemspec_opts ::= KEY SYMBOL.
-  61: gemspec_opts ::= SYMBOL HASHROCKET STRING.
-  62: gemspec_opts ::= SYMBOL HASHROCKET SYMBOL.
-  63: gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING.
-  64: gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL.
-  65: plugin_stmt ::= PLUGIN STRING.
-  66: plugin_stmt ::= PLUGIN STRING COMMA STRING.
+   5: gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN.
+   6: gem_opts ::=.
+   7: gem_opts ::= gem_opts COMMA STRING.
+   8: gem_opts ::= gem_opts COMMA KEY LIT_FALSE.
+   9: gem_opts ::= gem_opts COMMA KEY LIT_TRUE.
+  10: gem_opts ::= gem_opts COMMA KEY LIT_NIL.
+  11: gem_opts ::= gem_opts COMMA KEY SYMBOL.
+  12: gem_opts ::= gem_opts COMMA KEY STRING.
+  13: gem_opts ::= gem_opts COMMA KEY array.
+  14: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE.
+  15: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE.
+  16: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL.
+  17: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL.
+  18: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING.
+  19: gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array.
+  20: gem_opts ::= gem_opts COMMA string_array.
+  21: string_array ::= LBRACKET string_array_items RBRACKET.
+  22: string_array_items ::= STRING.
+  23: string_array_items ::= string_array_items COMMA STRING.
+  24: group_open ::= GROUP name_list DO.
+  25: group_open ::= GROUP LPAREN name_list RPAREN DO.
+  26: group_stmt ::= group_open stmts END.
+  27: name_list ::= SYMBOL.
+  28: name_list ::= STRING.
+  29: name_list ::= name_list COMMA SYMBOL.
+  30: name_list ::= name_list COMMA STRING.
+  31: platforms_stmt ::= platforms_open stmts END.
+  32: ruby_stmt ::= RUBY STRING ruby_opts.
+  33: ruby_stmt ::= RUBY KEY STRING.
+  34: ruby_opts ::=.
+  35: ruby_opts ::= ruby_opts COMMA KEY STRING.
+  36: ruby_opts ::= ruby_opts COMMA KEY SYMBOL.
+  37: ruby_opts ::= ruby_opts COMMA STRING.
+  38: gemspec_stmt ::= GEMSPEC gemspec_opts.
+  39: file ::= stmts.
+  40: stmts ::= stmts stmt.
+  41: stmts ::=.
+  42: stmt ::= source_stmt.
+  43: stmt ::= gem_stmt.
+  44: stmt ::= group_stmt.
+  45: stmt ::= ruby_stmt.
+  46: stmt ::= gemspec_stmt.
+  47: stmt ::= platforms_stmt.
+  48: stmt ::= plugin_stmt.
+  49: stmt ::= path_stmt.
+  50: stmt ::= git_stmt.
+  51: stmt ::= github_stmt.
+  52: stmt ::= install_if_stmt.
+  53: stmt ::= GIT_SOURCE.
+  54: stmt ::= NEWLINE.
+  55: array ::= LBRACKET array_items RBRACKET.
+  56: array ::= LBRACKET RBRACKET.
+  57: array ::= PERCENT_ARRAY.
+  58: array_items ::= SYMBOL.
+  59: array_items ::= STRING.
+  60: array_items ::= array_items COMMA SYMBOL.
+  61: array_items ::= array_items COMMA STRING.
+  62: name_list ::= name_list COMMA KEY LIT_TRUE.
+  63: name_list ::= name_list COMMA KEY LIT_FALSE.
+  64: name_list ::= name_list COMMA KEY STRING.
+  65: name_list ::= name_list COMMA KEY SYMBOL.
+  66: platforms_open ::= PLATFORMS platform_names DO.
+  67: platform_names ::= SYMBOL.
+  68: platform_names ::= platform_names COMMA SYMBOL.
+  69: block_kw_opts ::=.
+  70: block_kw_opts ::= block_kw_opts COMMA KEY STRING.
+  71: block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL.
+  72: block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE.
+  73: block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE.
+  74: path_stmt ::= PATH STRING block_kw_opts DO stmts END.
+  75: git_stmt ::= GIT STRING block_kw_opts DO stmts END.
+  76: github_stmt ::= GITHUB STRING block_kw_opts DO stmts END.
+  77: install_if_stmt ::= INSTALL_IF DO stmts END.
+  78: gemspec_opts ::=.
+  79: gemspec_opts ::= gemspec_opts COMMA KEY STRING.
+  80: gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL.
+  81: gemspec_opts ::= KEY STRING.
+  82: gemspec_opts ::= KEY SYMBOL.
+  83: gemspec_opts ::= SYMBOL HASHROCKET STRING.
+  84: gemspec_opts ::= SYMBOL HASHROCKET SYMBOL.
+  85: gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING.
+  86: gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL.
+  87: plugin_stmt ::= PLUGIN STRING.
+  88: plugin_stmt ::= PLUGIN STRING COMMA STRING.

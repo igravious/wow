@@ -113,33 +113,37 @@ static void gem_opts_acc_free(struct gem_opts_acc *a)
 #define GIT_SOURCE                     20
 #define PLUGIN                         21
 #define PLATFORMS                      22
-#define LBRACKET                       23
-#define RBRACKET                       24
-#define LPAREN                         25
-#define RPAREN                         26
-#define PERCENT_ARRAY                  27
-#define IF                             28
-#define UNLESS                         29
-#define ELSE                           30
-#define ELSIF                          31
-#define EVAL_GEMFILE                   32
-#define EQ                             33
-#define NEQ                            34
-#define GTE                            35
-#define LTE                            36
-#define GT                             37
-#define LT                             38
-#define MATCH                          39
-#define AND                            40
-#define OR                             41
-#define BANG                           42
-#define ASSIGN                         43
-#define DOT                            44
-#define COLON_COLON                    45
-#define PIPE                           46
-#define QUESTION                       47
-#define INTEGER                        48
-#define FLOAT_LIT                      49
+#define PATH                           23
+#define GIT                            24
+#define GITHUB                         25
+#define INSTALL_IF                     26
+#define LBRACKET                       27
+#define RBRACKET                       28
+#define LPAREN                         29
+#define RPAREN                         30
+#define PERCENT_ARRAY                  31
+#define IF                             32
+#define UNLESS                         33
+#define ELSE                           34
+#define ELSIF                          35
+#define EVAL_GEMFILE                   36
+#define EQ                             37
+#define NEQ                            38
+#define GTE                            39
+#define LTE                            40
+#define GT                             41
+#define LT                             42
+#define MATCH                          43
+#define AND                            44
+#define OR                             45
+#define BANG                           46
+#define ASSIGN                         47
+#define DOT                            48
+#define COLON_COLON                    49
+#define PIPE                           50
+#define QUESTION                       51
+#define INTEGER                        52
+#define FLOAT_LIT                      53
 #endif
 /**************** End token definitions ***************************************/
 
@@ -199,13 +203,13 @@ static void gem_opts_acc_free(struct gem_opts_acc *a)
 #endif
 /************* Begin control #defines *****************************************/
 #define YYCODETYPE unsigned char
-#define YYNOCODE 69
-#define YYACTIONTYPE unsigned char
+#define YYNOCODE 80
+#define YYACTIONTYPE unsigned short int
 #define ParseTOKENTYPE  struct wow_token 
 typedef union {
   int yyinit;
   ParseTOKENTYPE yy0;
-  struct gem_opts_acc yy96;
+  struct gem_opts_acc yy50;
 } YYMINORTYPE;
 #ifndef YYSTACKDEPTH
 #define YYSTACKDEPTH 100
@@ -220,18 +224,18 @@ typedef union {
 #define ParseCTX_PARAM
 #define ParseCTX_FETCH
 #define ParseCTX_STORE
-#define YYNSTATE             49
-#define YYNRULE              67
-#define YYNRULE_WITH_ACTION  34
-#define YYNTOKEN             50
-#define YY_MAX_SHIFT         48
-#define YY_MIN_SHIFTREDUCE   106
-#define YY_MAX_SHIFTREDUCE   172
-#define YY_ERROR_ACTION      173
-#define YY_ACCEPT_ACTION     174
-#define YY_NO_ACTION         175
-#define YY_MIN_REDUCE        176
-#define YY_MAX_REDUCE        242
+#define YYNSTATE             76
+#define YYNRULE              89
+#define YYNRULE_WITH_ACTION  39
+#define YYNTOKEN             54
+#define YY_MAX_SHIFT         75
+#define YY_MIN_SHIFTREDUCE   154
+#define YY_MAX_SHIFTREDUCE   242
+#define YY_ERROR_ACTION      243
+#define YY_ACCEPT_ACTION     244
+#define YY_NO_ACTION         245
+#define YY_MIN_REDUCE        246
+#define YY_MAX_REDUCE        334
 /************* End control #defines *******************************************/
 #define YY_NLOOKAHEAD ((int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])))
 
@@ -298,67 +302,99 @@ typedef union {
 **  yy_default[]       Default action for each state.
 **
 *********** Begin parsing tables **********************************************/
-#define YY_ACTTAB_COUNT (140)
+#define YY_ACTTAB_COUNT (255)
 static const YYACTIONTYPE yy_action[] = {
- /*     0 */   194,   18,   47,    7,  188,  132,   26,    9,  174,    4,
- /*    10 */    30,   32,   40,  112,   45,    6,  151,  129,  128,   28,
- /*    20 */   150,   37,   11,  211,  211,  211,  211,  211,  211,  211,
- /*    30 */   211,   10,  138,   14,   24,   13,  160,   18,   47,    7,
- /*    40 */    27,  127,   26,    9,   18,   47,    7,   42,  108,   26,
- /*    50 */     9,   12,  151,   41,   38,   20,  150,   37,   11,  151,
- /*    60 */     1,  156,  155,  150,   37,   11,  210,   18,   47,    7,
- /*    70 */    48,  107,   26,    9,  153,  120,  119,  121,  123,  122,
- /*    80 */   129,  128,  151,  159,   34,    2,  150,   37,   11,   46,
- /*    90 */     8,  167,  168,   43,  154,  114,  113,  115,  117,  116,
- /*   100 */   165,  166,  169,  170,  163,  164,   29,   39,   22,  125,
- /*   110 */     8,  136,  137,   31,  154,  131,  130,    3,   44,   29,
- /*   120 */   158,  157,  109,  152,   33,  172,   35,   36,  126,  134,
- /*   130 */    19,   16,   21,   23,   25,  161,    5,   15,  175,   17,
+ /*     0 */   265,   34,   53,   12,  259,  231,   42,   14,  244,    8,
+ /*    10 */   226,  227,  266,  224,  225,   48,  208,  184,  183,   32,
+ /*    20 */   207,   58,   16,   68,   66,   65,   64,  286,  286,  286,
+ /*    30 */   286,  286,  286,  286,  286,  286,  286,  286,  286,   59,
+ /*    40 */    36,   27,  191,   26,   40,   34,   53,   12,   52,  230,
+ /*    50 */    42,   14,  182,  181,   47,  169,  168,  170,  172,  171,
+ /*    60 */   208,  182,  181,   61,  207,   58,   16,   68,   66,   65,
+ /*    70 */    64,   34,   53,   12,   13,  229,   42,   14,  211,   15,
+ /*    80 */   221,  163,  162,  164,  166,  165,  208,  237,  238,   29,
+ /*    90 */   207,   58,   16,   68,   66,   65,   64,   34,   53,   12,
+ /*   100 */    13,  228,   42,   14,  211,  216,  217,   71,  218,  219,
+ /*   110 */   235,  236,  208,  213,  212,   46,  207,   58,   16,   68,
+ /*   120 */    66,   65,   64,   34,   53,   12,  176,  185,   42,   14,
+ /*   130 */   210,  239,  240,    1,   75,  155,  233,  234,  208,   50,
+ /*   140 */    60,   38,  207,   58,   16,   68,   66,   65,   64,   34,
+ /*   150 */    53,   12,   55,  180,   42,   14,  189,  190,   18,   63,
+ /*   160 */    62,  215,  214,   43,  208,    2,    3,   33,  207,   58,
+ /*   170 */    16,   68,   66,   65,   64,   34,   53,   12,   44,  156,
+ /*   180 */    42,   14,   20,   70,   49,    4,   45,   74,    5,   11,
+ /*   190 */   208,    6,   67,    7,  207,   58,   16,   68,   66,   65,
+ /*   200 */    64,  285,   34,   53,   12,  159,  157,   42,   14,   22,
+ /*   210 */    54,  242,   56,  161,   73,   10,   19,  208,   24,   67,
+ /*   220 */   220,  207,   58,   16,   68,   66,   65,   64,   67,   17,
+ /*   230 */    69,  178,   72,   51,   57,   35,   37,  187,   39,   41,
+ /*   240 */    21,   33,   23,   31,   25,  179,  175,  209,  222,   28,
+ /*   250 */   177,   30,    9,  245,   11,
 };
 static const YYCODETYPE yy_lookahead[] = {
- /*     0 */    62,    1,    2,    3,   62,    5,    6,    7,   52,   53,
- /*    10 */    65,   63,   68,   11,   12,   13,   16,   11,   12,   65,
- /*    20 */    20,   21,   22,   54,   55,   56,   57,   58,   59,   60,
- /*    30 */    61,   25,   11,   64,   13,   66,   12,    1,    2,    3,
- /*    40 */    67,    5,    6,    7,    1,    2,    3,   51,    5,    6,
- /*    50 */     7,   11,   16,   13,   12,   13,   20,   21,   22,   16,
- /*    60 */    53,   11,   12,   20,   21,   22,    0,    1,    2,    3,
- /*    70 */    11,   12,    6,    7,   24,    8,    9,   10,   11,   12,
- /*    80 */    11,   12,   16,    4,   25,   53,   20,   21,   22,   50,
- /*    90 */    23,   11,   12,   14,   27,    8,    9,   10,   11,   12,
- /*   100 */    11,   12,   11,   12,   11,   12,   14,   12,   13,    4,
- /*   110 */    23,   11,   12,   14,   27,   11,   12,   53,   26,   14,
- /*   120 */    11,   12,   26,   24,   11,   11,   14,   11,    4,   11,
- /*   130 */    15,    4,   15,   14,   14,   12,   15,   11,   69,   14,
- /*   140 */    69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
- /*   150 */    69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
- /*   160 */    69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
- /*   170 */    69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
- /*   180 */    69,   69,   69,   69,   69,   69,   69,   69,   69,   69,
+ /*     0 */    72,    1,    2,    3,   72,    5,    6,    7,   58,   59,
+ /*    10 */     8,    9,   56,   11,   12,   75,   16,   11,   12,   13,
+ /*    20 */    20,   21,   22,   23,   24,   25,   26,   60,   61,   62,
+ /*    30 */    63,   64,   65,   66,   67,   68,   69,   70,   71,   12,
+ /*    40 */    13,   74,   11,   76,   13,    1,    2,    3,   73,    5,
+ /*    50 */     6,    7,   11,   12,   75,    8,    9,   10,   11,   12,
+ /*    60 */    16,   11,   12,   79,   20,   21,   22,   23,   24,   25,
+ /*    70 */    26,    1,    2,    3,   27,    5,    6,    7,   31,   29,
+ /*    80 */    12,    8,    9,   10,   11,   12,   16,   11,   12,   11,
+ /*    90 */    20,   21,   22,   23,   24,   25,   26,    1,    2,    3,
+ /*   100 */    27,    5,    6,    7,   31,    8,    9,   29,   11,   12,
+ /*   110 */    11,   12,   16,   11,   12,   77,   20,   21,   22,   23,
+ /*   120 */    24,   25,   26,    1,    2,    3,   11,    5,    6,    7,
+ /*   130 */    28,   11,   12,   59,   11,   12,   11,   12,   16,   57,
+ /*   140 */    12,   13,   20,   21,   22,   23,   24,   25,   26,    1,
+ /*   150 */     2,    3,   29,    5,    6,    7,   11,   12,   11,   55,
+ /*   160 */    13,   11,   12,   78,   16,   59,   59,   14,   20,   21,
+ /*   170 */    22,   23,   24,   25,   26,    1,    2,    3,   78,    5,
+ /*   180 */     6,    7,    4,   30,   54,   59,   78,   54,   59,   14,
+ /*   190 */    16,   59,   14,   59,   20,   21,   22,   23,   24,   25,
+ /*   200 */    26,    0,    1,    2,    3,   30,   30,    6,    7,    4,
+ /*   210 */    11,   11,   14,   11,   12,   13,    4,   16,    4,   14,
+ /*   220 */     4,   20,   21,   22,   23,   24,   25,   26,   14,   27,
+ /*   230 */    14,    4,   14,   14,   11,   15,   15,   11,   14,   14,
+ /*   240 */    11,   14,   11,   13,   11,    4,   28,   28,   12,   11,
+ /*   250 */    11,    4,   15,   80,   14,   80,   80,   80,   80,   80,
+ /*   260 */    80,   80,   80,   80,   80,   80,   80,   80,   80,   80,
+ /*   270 */    80,   80,   80,   80,   80,   80,   80,   80,   80,   80,
+ /*   280 */    80,   80,   80,   80,   80,   80,   80,   80,   80,   80,
+ /*   290 */    80,   80,   80,   80,   80,   80,   80,   80,   80,   80,
+ /*   300 */    80,   80,   80,   80,   80,   80,   80,   80,   80,
 };
-#define YY_SHIFT_COUNT    (48)
+#define YY_SHIFT_COUNT    (75)
 #define YY_SHIFT_MIN      (0)
-#define YY_SHIFT_MAX      (127)
-static const unsigned char yy_shift_ofst[] = {
- /*     0 */   140,    0,   36,   43,   66,   67,   87,    6,   50,   42,
- /*    10 */    69,   24,  140,  140,  140,  140,  140,    2,   59,   80,
- /*    20 */    89,   91,   93,   95,  100,   21,   40,   79,   92,  104,
- /*    30 */   105,  109,   99,   96,  113,  114,  112,  116,  115,  117,
- /*    40 */   119,  118,  120,  123,  124,  121,  125,  126,  127,
+#define YY_SHIFT_MAX      (247)
+static const unsigned short int yy_shift_ofst[] = {
+ /*     0 */   255,    0,   44,   70,   96,  122,  148,  174,  201,   47,
+ /*    10 */    73,  202,   50,  102,   27,   41,   68,  115,  255,  255,
+ /*    20 */   255,  255,  255,  255,  255,  255,  255,  255,  255,  255,
+ /*    30 */   255,    2,   97,    6,  123,   76,   99,  120,  125,  128,
+ /*    40 */   145,   31,  147,  178,  205,  214,  216,  153,  227,  175,
+ /*    50 */   218,  150,  219,   78,  176,  199,  200,  198,  223,  220,
+ /*    60 */   221,  224,  226,  225,  212,  229,  231,  230,  233,  236,
+ /*    70 */   241,  238,  239,  237,  240,  247,
 };
-#define YY_REDUCE_COUNT (16)
-#define YY_REDUCE_MIN   (-62)
-#define YY_REDUCE_MAX   (64)
-static const signed char yy_reduce_ofst[] = {
- /*     0 */   -44,  -31,  -31,  -31,  -31,  -62,  -58,  -55,  -52,  -56,
- /*    10 */   -46,  -27,   -4,    7,   32,   39,   64,
+#define YY_REDUCE_COUNT (30)
+#define YY_REDUCE_MIN   (-72)
+#define YY_REDUCE_MAX   (134)
+static const short yy_reduce_ofst[] = {
+ /*     0 */   -50,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -33,  -72,
+ /*    10 */   -68,  -44,  -60,  -25,  -16,  -21,   38,   82,  104,   74,
+ /*    20 */   106,   85,  107,  100,  126,  108,  129,  132,  130,  133,
+ /*    30 */   134,
 };
 static const YYACTIONTYPE yy_default[] = {
- /*     0 */   212,  173,  173,  173,  173,  173,  173,  173,  173,  232,
- /*    10 */   173,  173,  205,  212,  212,  181,  212,  173,  173,  173,
- /*    20 */   173,  173,  173,  173,  173,  173,  173,  173,  173,  173,
- /*    30 */   173,  173,  173,  173,  173,  173,  241,  173,  173,  173,
- /*    40 */   209,  173,  203,  173,  173,  173,  180,  173,  176,
+ /*     0 */   287,  243,  243,  243,  243,  243,  243,  243,  243,  243,
+ /*    10 */   243,  243,  243,  243,  324,  243,  243,  243,  280,  287,
+ /*    20 */   287,  315,  287,  315,  287,  315,  287,  287,  252,  252,
+ /*    30 */   287,  243,  243,  243,  243,  243,  243,  243,  243,  243,
+ /*    40 */   243,  243,  243,  243,  243,  243,  243,  243,  243,  243,
+ /*    50 */   243,  243,  243,  243,  243,  243,  243,  333,  243,  243,
+ /*    60 */   243,  284,  243,  278,  243,  243,  243,  243,  243,  243,
+ /*    70 */   243,  243,  243,  243,  250,  246,
 };
 /********** End of lemon-generated parsing tables *****************************/
 
@@ -489,52 +525,63 @@ static const char *const yyTokenName[] = {
   /*   20 */ "GIT_SOURCE",
   /*   21 */ "PLUGIN",
   /*   22 */ "PLATFORMS",
-  /*   23 */ "LBRACKET",
-  /*   24 */ "RBRACKET",
-  /*   25 */ "LPAREN",
-  /*   26 */ "RPAREN",
-  /*   27 */ "PERCENT_ARRAY",
-  /*   28 */ "IF",
-  /*   29 */ "UNLESS",
-  /*   30 */ "ELSE",
-  /*   31 */ "ELSIF",
-  /*   32 */ "EVAL_GEMFILE",
-  /*   33 */ "EQ",
-  /*   34 */ "NEQ",
-  /*   35 */ "GTE",
-  /*   36 */ "LTE",
-  /*   37 */ "GT",
-  /*   38 */ "LT",
-  /*   39 */ "MATCH",
-  /*   40 */ "AND",
-  /*   41 */ "OR",
-  /*   42 */ "BANG",
-  /*   43 */ "ASSIGN",
-  /*   44 */ "DOT",
-  /*   45 */ "COLON_COLON",
-  /*   46 */ "PIPE",
-  /*   47 */ "QUESTION",
-  /*   48 */ "INTEGER",
-  /*   49 */ "FLOAT_LIT",
-  /*   50 */ "gem_opts",
-  /*   51 */ "ruby_opts",
-  /*   52 */ "file",
-  /*   53 */ "stmts",
-  /*   54 */ "stmt",
-  /*   55 */ "source_stmt",
-  /*   56 */ "gem_stmt",
-  /*   57 */ "group_stmt",
-  /*   58 */ "ruby_stmt",
-  /*   59 */ "gemspec_stmt",
-  /*   60 */ "platforms_stmt",
-  /*   61 */ "plugin_stmt",
-  /*   62 */ "array",
-  /*   63 */ "array_items",
-  /*   64 */ "group_open",
-  /*   65 */ "name_list",
-  /*   66 */ "platforms_open",
-  /*   67 */ "platform_names",
-  /*   68 */ "gemspec_opts",
+  /*   23 */ "PATH",
+  /*   24 */ "GIT",
+  /*   25 */ "GITHUB",
+  /*   26 */ "INSTALL_IF",
+  /*   27 */ "LBRACKET",
+  /*   28 */ "RBRACKET",
+  /*   29 */ "LPAREN",
+  /*   30 */ "RPAREN",
+  /*   31 */ "PERCENT_ARRAY",
+  /*   32 */ "IF",
+  /*   33 */ "UNLESS",
+  /*   34 */ "ELSE",
+  /*   35 */ "ELSIF",
+  /*   36 */ "EVAL_GEMFILE",
+  /*   37 */ "EQ",
+  /*   38 */ "NEQ",
+  /*   39 */ "GTE",
+  /*   40 */ "LTE",
+  /*   41 */ "GT",
+  /*   42 */ "LT",
+  /*   43 */ "MATCH",
+  /*   44 */ "AND",
+  /*   45 */ "OR",
+  /*   46 */ "BANG",
+  /*   47 */ "ASSIGN",
+  /*   48 */ "DOT",
+  /*   49 */ "COLON_COLON",
+  /*   50 */ "PIPE",
+  /*   51 */ "QUESTION",
+  /*   52 */ "INTEGER",
+  /*   53 */ "FLOAT_LIT",
+  /*   54 */ "gem_opts",
+  /*   55 */ "ruby_opts",
+  /*   56 */ "string_array",
+  /*   57 */ "string_array_items",
+  /*   58 */ "file",
+  /*   59 */ "stmts",
+  /*   60 */ "stmt",
+  /*   61 */ "source_stmt",
+  /*   62 */ "gem_stmt",
+  /*   63 */ "group_stmt",
+  /*   64 */ "ruby_stmt",
+  /*   65 */ "gemspec_stmt",
+  /*   66 */ "platforms_stmt",
+  /*   67 */ "plugin_stmt",
+  /*   68 */ "path_stmt",
+  /*   69 */ "git_stmt",
+  /*   70 */ "github_stmt",
+  /*   71 */ "install_if_stmt",
+  /*   72 */ "array",
+  /*   73 */ "array_items",
+  /*   74 */ "group_open",
+  /*   75 */ "name_list",
+  /*   76 */ "platforms_open",
+  /*   77 */ "platform_names",
+  /*   78 */ "block_kw_opts",
+  /*   79 */ "gemspec_opts",
 };
 #endif /* defined(YYCOVERAGE) || !defined(NDEBUG) */
 
@@ -547,68 +594,90 @@ static const char *const yyRuleName[] = {
  /*   2 */ "source_stmt ::= SOURCE STRING DO stmts END",
  /*   3 */ "source_stmt ::= SOURCE LPAREN STRING RPAREN",
  /*   4 */ "gem_stmt ::= GEM STRING gem_opts",
- /*   5 */ "gem_opts ::=",
- /*   6 */ "gem_opts ::= gem_opts COMMA STRING",
- /*   7 */ "gem_opts ::= gem_opts COMMA KEY LIT_FALSE",
- /*   8 */ "gem_opts ::= gem_opts COMMA KEY LIT_TRUE",
- /*   9 */ "gem_opts ::= gem_opts COMMA KEY LIT_NIL",
- /*  10 */ "gem_opts ::= gem_opts COMMA KEY SYMBOL",
- /*  11 */ "gem_opts ::= gem_opts COMMA KEY STRING",
- /*  12 */ "gem_opts ::= gem_opts COMMA KEY array",
- /*  13 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE",
- /*  14 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE",
- /*  15 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL",
- /*  16 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL",
- /*  17 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING",
- /*  18 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array",
- /*  19 */ "group_open ::= GROUP name_list DO",
- /*  20 */ "group_open ::= GROUP LPAREN name_list RPAREN DO",
- /*  21 */ "group_stmt ::= group_open stmts END",
- /*  22 */ "name_list ::= SYMBOL",
- /*  23 */ "name_list ::= STRING",
- /*  24 */ "name_list ::= name_list COMMA SYMBOL",
- /*  25 */ "name_list ::= name_list COMMA STRING",
- /*  26 */ "platforms_stmt ::= platforms_open stmts END",
- /*  27 */ "ruby_stmt ::= RUBY STRING ruby_opts",
- /*  28 */ "ruby_stmt ::= RUBY KEY STRING",
- /*  29 */ "ruby_opts ::=",
- /*  30 */ "ruby_opts ::= ruby_opts COMMA KEY STRING",
- /*  31 */ "ruby_opts ::= ruby_opts COMMA KEY SYMBOL",
- /*  32 */ "ruby_opts ::= ruby_opts COMMA STRING",
- /*  33 */ "gemspec_stmt ::= GEMSPEC gemspec_opts",
- /*  34 */ "file ::= stmts",
- /*  35 */ "stmts ::= stmts stmt",
- /*  36 */ "stmts ::=",
- /*  37 */ "stmt ::= source_stmt",
- /*  38 */ "stmt ::= gem_stmt",
- /*  39 */ "stmt ::= group_stmt",
- /*  40 */ "stmt ::= ruby_stmt",
- /*  41 */ "stmt ::= gemspec_stmt",
- /*  42 */ "stmt ::= platforms_stmt",
- /*  43 */ "stmt ::= plugin_stmt",
- /*  44 */ "stmt ::= GIT_SOURCE",
- /*  45 */ "stmt ::= NEWLINE",
- /*  46 */ "array ::= LBRACKET array_items RBRACKET",
- /*  47 */ "array ::= LBRACKET RBRACKET",
- /*  48 */ "array ::= PERCENT_ARRAY",
- /*  49 */ "array_items ::= SYMBOL",
- /*  50 */ "array_items ::= STRING",
- /*  51 */ "array_items ::= array_items COMMA SYMBOL",
- /*  52 */ "array_items ::= array_items COMMA STRING",
- /*  53 */ "platforms_open ::= PLATFORMS platform_names DO",
- /*  54 */ "platform_names ::= SYMBOL",
- /*  55 */ "platform_names ::= platform_names COMMA SYMBOL",
- /*  56 */ "gemspec_opts ::=",
- /*  57 */ "gemspec_opts ::= gemspec_opts COMMA KEY STRING",
- /*  58 */ "gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL",
- /*  59 */ "gemspec_opts ::= KEY STRING",
- /*  60 */ "gemspec_opts ::= KEY SYMBOL",
- /*  61 */ "gemspec_opts ::= SYMBOL HASHROCKET STRING",
- /*  62 */ "gemspec_opts ::= SYMBOL HASHROCKET SYMBOL",
- /*  63 */ "gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING",
- /*  64 */ "gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL",
- /*  65 */ "plugin_stmt ::= PLUGIN STRING",
- /*  66 */ "plugin_stmt ::= PLUGIN STRING COMMA STRING",
+ /*   5 */ "gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN",
+ /*   6 */ "gem_opts ::=",
+ /*   7 */ "gem_opts ::= gem_opts COMMA STRING",
+ /*   8 */ "gem_opts ::= gem_opts COMMA KEY LIT_FALSE",
+ /*   9 */ "gem_opts ::= gem_opts COMMA KEY LIT_TRUE",
+ /*  10 */ "gem_opts ::= gem_opts COMMA KEY LIT_NIL",
+ /*  11 */ "gem_opts ::= gem_opts COMMA KEY SYMBOL",
+ /*  12 */ "gem_opts ::= gem_opts COMMA KEY STRING",
+ /*  13 */ "gem_opts ::= gem_opts COMMA KEY array",
+ /*  14 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE",
+ /*  15 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE",
+ /*  16 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL",
+ /*  17 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL",
+ /*  18 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING",
+ /*  19 */ "gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array",
+ /*  20 */ "gem_opts ::= gem_opts COMMA string_array",
+ /*  21 */ "string_array ::= LBRACKET string_array_items RBRACKET",
+ /*  22 */ "string_array_items ::= STRING",
+ /*  23 */ "string_array_items ::= string_array_items COMMA STRING",
+ /*  24 */ "group_open ::= GROUP name_list DO",
+ /*  25 */ "group_open ::= GROUP LPAREN name_list RPAREN DO",
+ /*  26 */ "group_stmt ::= group_open stmts END",
+ /*  27 */ "name_list ::= SYMBOL",
+ /*  28 */ "name_list ::= STRING",
+ /*  29 */ "name_list ::= name_list COMMA SYMBOL",
+ /*  30 */ "name_list ::= name_list COMMA STRING",
+ /*  31 */ "platforms_stmt ::= platforms_open stmts END",
+ /*  32 */ "ruby_stmt ::= RUBY STRING ruby_opts",
+ /*  33 */ "ruby_stmt ::= RUBY KEY STRING",
+ /*  34 */ "ruby_opts ::=",
+ /*  35 */ "ruby_opts ::= ruby_opts COMMA KEY STRING",
+ /*  36 */ "ruby_opts ::= ruby_opts COMMA KEY SYMBOL",
+ /*  37 */ "ruby_opts ::= ruby_opts COMMA STRING",
+ /*  38 */ "gemspec_stmt ::= GEMSPEC gemspec_opts",
+ /*  39 */ "file ::= stmts",
+ /*  40 */ "stmts ::= stmts stmt",
+ /*  41 */ "stmts ::=",
+ /*  42 */ "stmt ::= source_stmt",
+ /*  43 */ "stmt ::= gem_stmt",
+ /*  44 */ "stmt ::= group_stmt",
+ /*  45 */ "stmt ::= ruby_stmt",
+ /*  46 */ "stmt ::= gemspec_stmt",
+ /*  47 */ "stmt ::= platforms_stmt",
+ /*  48 */ "stmt ::= plugin_stmt",
+ /*  49 */ "stmt ::= path_stmt",
+ /*  50 */ "stmt ::= git_stmt",
+ /*  51 */ "stmt ::= github_stmt",
+ /*  52 */ "stmt ::= install_if_stmt",
+ /*  53 */ "stmt ::= GIT_SOURCE",
+ /*  54 */ "stmt ::= NEWLINE",
+ /*  55 */ "array ::= LBRACKET array_items RBRACKET",
+ /*  56 */ "array ::= LBRACKET RBRACKET",
+ /*  57 */ "array ::= PERCENT_ARRAY",
+ /*  58 */ "array_items ::= SYMBOL",
+ /*  59 */ "array_items ::= STRING",
+ /*  60 */ "array_items ::= array_items COMMA SYMBOL",
+ /*  61 */ "array_items ::= array_items COMMA STRING",
+ /*  62 */ "name_list ::= name_list COMMA KEY LIT_TRUE",
+ /*  63 */ "name_list ::= name_list COMMA KEY LIT_FALSE",
+ /*  64 */ "name_list ::= name_list COMMA KEY STRING",
+ /*  65 */ "name_list ::= name_list COMMA KEY SYMBOL",
+ /*  66 */ "platforms_open ::= PLATFORMS platform_names DO",
+ /*  67 */ "platform_names ::= SYMBOL",
+ /*  68 */ "platform_names ::= platform_names COMMA SYMBOL",
+ /*  69 */ "block_kw_opts ::=",
+ /*  70 */ "block_kw_opts ::= block_kw_opts COMMA KEY STRING",
+ /*  71 */ "block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL",
+ /*  72 */ "block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE",
+ /*  73 */ "block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE",
+ /*  74 */ "path_stmt ::= PATH STRING block_kw_opts DO stmts END",
+ /*  75 */ "git_stmt ::= GIT STRING block_kw_opts DO stmts END",
+ /*  76 */ "github_stmt ::= GITHUB STRING block_kw_opts DO stmts END",
+ /*  77 */ "install_if_stmt ::= INSTALL_IF DO stmts END",
+ /*  78 */ "gemspec_opts ::=",
+ /*  79 */ "gemspec_opts ::= gemspec_opts COMMA KEY STRING",
+ /*  80 */ "gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL",
+ /*  81 */ "gemspec_opts ::= KEY STRING",
+ /*  82 */ "gemspec_opts ::= KEY SYMBOL",
+ /*  83 */ "gemspec_opts ::= SYMBOL HASHROCKET STRING",
+ /*  84 */ "gemspec_opts ::= SYMBOL HASHROCKET SYMBOL",
+ /*  85 */ "gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING",
+ /*  86 */ "gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL",
+ /*  87 */ "plugin_stmt ::= PLUGIN STRING",
+ /*  88 */ "plugin_stmt ::= PLUGIN STRING COMMA STRING",
 };
 #endif /* NDEBUG */
 
@@ -735,35 +804,42 @@ static void yy_destructor(
     */
 /********* Begin destructor definitions ***************************************/
       /* Default NON-TERMINAL Destructor */
-    case 52: /* file */
-    case 53: /* stmts */
-    case 54: /* stmt */
-    case 55: /* source_stmt */
-    case 56: /* gem_stmt */
-    case 57: /* group_stmt */
-    case 58: /* ruby_stmt */
-    case 59: /* gemspec_stmt */
-    case 60: /* platforms_stmt */
-    case 61: /* plugin_stmt */
-    case 62: /* array */
-    case 63: /* array_items */
-    case 64: /* group_open */
-    case 65: /* name_list */
-    case 66: /* platforms_open */
-    case 67: /* platform_names */
-    case 68: /* gemspec_opts */
+    case 58: /* file */
+    case 59: /* stmts */
+    case 60: /* stmt */
+    case 61: /* source_stmt */
+    case 62: /* gem_stmt */
+    case 63: /* group_stmt */
+    case 64: /* ruby_stmt */
+    case 65: /* gemspec_stmt */
+    case 66: /* platforms_stmt */
+    case 67: /* plugin_stmt */
+    case 68: /* path_stmt */
+    case 69: /* git_stmt */
+    case 70: /* github_stmt */
+    case 71: /* install_if_stmt */
+    case 72: /* array */
+    case 73: /* array_items */
+    case 74: /* group_open */
+    case 75: /* name_list */
+    case 76: /* platforms_open */
+    case 77: /* platform_names */
+    case 78: /* block_kw_opts */
+    case 79: /* gemspec_opts */
 {
 #line 76 "src/gemfile/parser.y"
  (void)(yypminor->yy0); (void)gf; 
-#line 758 "src/gemfile/parser.c"
+#line 832 "src/gemfile/parser.c"
 }
       break;
-    case 50: /* gem_opts */
-    case 51: /* ruby_opts */
+    case 54: /* gem_opts */
+    case 55: /* ruby_opts */
+    case 56: /* string_array */
+    case 57: /* string_array_items */
 {
-#line 86 "src/gemfile/parser.y"
- gem_opts_acc_free(&(yypminor->yy96)); 
-#line 766 "src/gemfile/parser.c"
+#line 88 "src/gemfile/parser.y"
+ gem_opts_acc_free(&(yypminor->yy50)); 
+#line 842 "src/gemfile/parser.c"
 }
       break;
 /********* End destructor definitions *****************************************/
@@ -1052,73 +1128,95 @@ static void yy_shift(
 /* For rule J, yyRuleInfoLhs[J] contains the symbol on the left-hand side
 ** of that rule */
 static const YYCODETYPE yyRuleInfoLhs[] = {
-    55,  /* (0) source_stmt ::= SOURCE STRING */
-    55,  /* (1) source_stmt ::= SOURCE SYMBOL */
-    55,  /* (2) source_stmt ::= SOURCE STRING DO stmts END */
-    55,  /* (3) source_stmt ::= SOURCE LPAREN STRING RPAREN */
-    56,  /* (4) gem_stmt ::= GEM STRING gem_opts */
-    50,  /* (5) gem_opts ::= */
-    50,  /* (6) gem_opts ::= gem_opts COMMA STRING */
-    50,  /* (7) gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
-    50,  /* (8) gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
-    50,  /* (9) gem_opts ::= gem_opts COMMA KEY LIT_NIL */
-    50,  /* (10) gem_opts ::= gem_opts COMMA KEY SYMBOL */
-    50,  /* (11) gem_opts ::= gem_opts COMMA KEY STRING */
-    50,  /* (12) gem_opts ::= gem_opts COMMA KEY array */
-    50,  /* (13) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
-    50,  /* (14) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
-    50,  /* (15) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
-    50,  /* (16) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
-    50,  /* (17) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
-    50,  /* (18) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
-    64,  /* (19) group_open ::= GROUP name_list DO */
-    64,  /* (20) group_open ::= GROUP LPAREN name_list RPAREN DO */
-    57,  /* (21) group_stmt ::= group_open stmts END */
-    65,  /* (22) name_list ::= SYMBOL */
-    65,  /* (23) name_list ::= STRING */
-    65,  /* (24) name_list ::= name_list COMMA SYMBOL */
-    65,  /* (25) name_list ::= name_list COMMA STRING */
-    60,  /* (26) platforms_stmt ::= platforms_open stmts END */
-    58,  /* (27) ruby_stmt ::= RUBY STRING ruby_opts */
-    58,  /* (28) ruby_stmt ::= RUBY KEY STRING */
-    51,  /* (29) ruby_opts ::= */
-    51,  /* (30) ruby_opts ::= ruby_opts COMMA KEY STRING */
-    51,  /* (31) ruby_opts ::= ruby_opts COMMA KEY SYMBOL */
-    51,  /* (32) ruby_opts ::= ruby_opts COMMA STRING */
-    59,  /* (33) gemspec_stmt ::= GEMSPEC gemspec_opts */
-    52,  /* (34) file ::= stmts */
-    53,  /* (35) stmts ::= stmts stmt */
-    53,  /* (36) stmts ::= */
-    54,  /* (37) stmt ::= source_stmt */
-    54,  /* (38) stmt ::= gem_stmt */
-    54,  /* (39) stmt ::= group_stmt */
-    54,  /* (40) stmt ::= ruby_stmt */
-    54,  /* (41) stmt ::= gemspec_stmt */
-    54,  /* (42) stmt ::= platforms_stmt */
-    54,  /* (43) stmt ::= plugin_stmt */
-    54,  /* (44) stmt ::= GIT_SOURCE */
-    54,  /* (45) stmt ::= NEWLINE */
-    62,  /* (46) array ::= LBRACKET array_items RBRACKET */
-    62,  /* (47) array ::= LBRACKET RBRACKET */
-    62,  /* (48) array ::= PERCENT_ARRAY */
-    63,  /* (49) array_items ::= SYMBOL */
-    63,  /* (50) array_items ::= STRING */
-    63,  /* (51) array_items ::= array_items COMMA SYMBOL */
-    63,  /* (52) array_items ::= array_items COMMA STRING */
-    66,  /* (53) platforms_open ::= PLATFORMS platform_names DO */
-    67,  /* (54) platform_names ::= SYMBOL */
-    67,  /* (55) platform_names ::= platform_names COMMA SYMBOL */
-    68,  /* (56) gemspec_opts ::= */
-    68,  /* (57) gemspec_opts ::= gemspec_opts COMMA KEY STRING */
-    68,  /* (58) gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */
-    68,  /* (59) gemspec_opts ::= KEY STRING */
-    68,  /* (60) gemspec_opts ::= KEY SYMBOL */
-    68,  /* (61) gemspec_opts ::= SYMBOL HASHROCKET STRING */
-    68,  /* (62) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */
-    68,  /* (63) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
-    68,  /* (64) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */
-    61,  /* (65) plugin_stmt ::= PLUGIN STRING */
-    61,  /* (66) plugin_stmt ::= PLUGIN STRING COMMA STRING */
+    61,  /* (0) source_stmt ::= SOURCE STRING */
+    61,  /* (1) source_stmt ::= SOURCE SYMBOL */
+    61,  /* (2) source_stmt ::= SOURCE STRING DO stmts END */
+    61,  /* (3) source_stmt ::= SOURCE LPAREN STRING RPAREN */
+    62,  /* (4) gem_stmt ::= GEM STRING gem_opts */
+    62,  /* (5) gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN */
+    54,  /* (6) gem_opts ::= */
+    54,  /* (7) gem_opts ::= gem_opts COMMA STRING */
+    54,  /* (8) gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
+    54,  /* (9) gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
+    54,  /* (10) gem_opts ::= gem_opts COMMA KEY LIT_NIL */
+    54,  /* (11) gem_opts ::= gem_opts COMMA KEY SYMBOL */
+    54,  /* (12) gem_opts ::= gem_opts COMMA KEY STRING */
+    54,  /* (13) gem_opts ::= gem_opts COMMA KEY array */
+    54,  /* (14) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
+    54,  /* (15) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
+    54,  /* (16) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
+    54,  /* (17) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
+    54,  /* (18) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
+    54,  /* (19) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
+    54,  /* (20) gem_opts ::= gem_opts COMMA string_array */
+    56,  /* (21) string_array ::= LBRACKET string_array_items RBRACKET */
+    57,  /* (22) string_array_items ::= STRING */
+    57,  /* (23) string_array_items ::= string_array_items COMMA STRING */
+    74,  /* (24) group_open ::= GROUP name_list DO */
+    74,  /* (25) group_open ::= GROUP LPAREN name_list RPAREN DO */
+    63,  /* (26) group_stmt ::= group_open stmts END */
+    75,  /* (27) name_list ::= SYMBOL */
+    75,  /* (28) name_list ::= STRING */
+    75,  /* (29) name_list ::= name_list COMMA SYMBOL */
+    75,  /* (30) name_list ::= name_list COMMA STRING */
+    66,  /* (31) platforms_stmt ::= platforms_open stmts END */
+    64,  /* (32) ruby_stmt ::= RUBY STRING ruby_opts */
+    64,  /* (33) ruby_stmt ::= RUBY KEY STRING */
+    55,  /* (34) ruby_opts ::= */
+    55,  /* (35) ruby_opts ::= ruby_opts COMMA KEY STRING */
+    55,  /* (36) ruby_opts ::= ruby_opts COMMA KEY SYMBOL */
+    55,  /* (37) ruby_opts ::= ruby_opts COMMA STRING */
+    65,  /* (38) gemspec_stmt ::= GEMSPEC gemspec_opts */
+    58,  /* (39) file ::= stmts */
+    59,  /* (40) stmts ::= stmts stmt */
+    59,  /* (41) stmts ::= */
+    60,  /* (42) stmt ::= source_stmt */
+    60,  /* (43) stmt ::= gem_stmt */
+    60,  /* (44) stmt ::= group_stmt */
+    60,  /* (45) stmt ::= ruby_stmt */
+    60,  /* (46) stmt ::= gemspec_stmt */
+    60,  /* (47) stmt ::= platforms_stmt */
+    60,  /* (48) stmt ::= plugin_stmt */
+    60,  /* (49) stmt ::= path_stmt */
+    60,  /* (50) stmt ::= git_stmt */
+    60,  /* (51) stmt ::= github_stmt */
+    60,  /* (52) stmt ::= install_if_stmt */
+    60,  /* (53) stmt ::= GIT_SOURCE */
+    60,  /* (54) stmt ::= NEWLINE */
+    72,  /* (55) array ::= LBRACKET array_items RBRACKET */
+    72,  /* (56) array ::= LBRACKET RBRACKET */
+    72,  /* (57) array ::= PERCENT_ARRAY */
+    73,  /* (58) array_items ::= SYMBOL */
+    73,  /* (59) array_items ::= STRING */
+    73,  /* (60) array_items ::= array_items COMMA SYMBOL */
+    73,  /* (61) array_items ::= array_items COMMA STRING */
+    75,  /* (62) name_list ::= name_list COMMA KEY LIT_TRUE */
+    75,  /* (63) name_list ::= name_list COMMA KEY LIT_FALSE */
+    75,  /* (64) name_list ::= name_list COMMA KEY STRING */
+    75,  /* (65) name_list ::= name_list COMMA KEY SYMBOL */
+    76,  /* (66) platforms_open ::= PLATFORMS platform_names DO */
+    77,  /* (67) platform_names ::= SYMBOL */
+    77,  /* (68) platform_names ::= platform_names COMMA SYMBOL */
+    78,  /* (69) block_kw_opts ::= */
+    78,  /* (70) block_kw_opts ::= block_kw_opts COMMA KEY STRING */
+    78,  /* (71) block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL */
+    78,  /* (72) block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE */
+    78,  /* (73) block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE */
+    68,  /* (74) path_stmt ::= PATH STRING block_kw_opts DO stmts END */
+    69,  /* (75) git_stmt ::= GIT STRING block_kw_opts DO stmts END */
+    70,  /* (76) github_stmt ::= GITHUB STRING block_kw_opts DO stmts END */
+    71,  /* (77) install_if_stmt ::= INSTALL_IF DO stmts END */
+    79,  /* (78) gemspec_opts ::= */
+    79,  /* (79) gemspec_opts ::= gemspec_opts COMMA KEY STRING */
+    79,  /* (80) gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */
+    79,  /* (81) gemspec_opts ::= KEY STRING */
+    79,  /* (82) gemspec_opts ::= KEY SYMBOL */
+    79,  /* (83) gemspec_opts ::= SYMBOL HASHROCKET STRING */
+    79,  /* (84) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */
+    79,  /* (85) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
+    79,  /* (86) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */
+    67,  /* (87) plugin_stmt ::= PLUGIN STRING */
+    67,  /* (88) plugin_stmt ::= PLUGIN STRING COMMA STRING */
 };
 
 /* For rule J, yyRuleInfoNRhs[J] contains the negative of the number
@@ -1129,68 +1227,90 @@ static const signed char yyRuleInfoNRhs[] = {
    -5,  /* (2) source_stmt ::= SOURCE STRING DO stmts END */
    -4,  /* (3) source_stmt ::= SOURCE LPAREN STRING RPAREN */
    -3,  /* (4) gem_stmt ::= GEM STRING gem_opts */
-    0,  /* (5) gem_opts ::= */
-   -3,  /* (6) gem_opts ::= gem_opts COMMA STRING */
-   -4,  /* (7) gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
-   -4,  /* (8) gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
-   -4,  /* (9) gem_opts ::= gem_opts COMMA KEY LIT_NIL */
-   -4,  /* (10) gem_opts ::= gem_opts COMMA KEY SYMBOL */
-   -4,  /* (11) gem_opts ::= gem_opts COMMA KEY STRING */
-   -4,  /* (12) gem_opts ::= gem_opts COMMA KEY array */
-   -5,  /* (13) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
-   -5,  /* (14) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
-   -5,  /* (15) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
-   -5,  /* (16) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
-   -5,  /* (17) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
-   -5,  /* (18) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
-   -3,  /* (19) group_open ::= GROUP name_list DO */
-   -5,  /* (20) group_open ::= GROUP LPAREN name_list RPAREN DO */
-   -3,  /* (21) group_stmt ::= group_open stmts END */
-   -1,  /* (22) name_list ::= SYMBOL */
-   -1,  /* (23) name_list ::= STRING */
-   -3,  /* (24) name_list ::= name_list COMMA SYMBOL */
-   -3,  /* (25) name_list ::= name_list COMMA STRING */
-   -3,  /* (26) platforms_stmt ::= platforms_open stmts END */
-   -3,  /* (27) ruby_stmt ::= RUBY STRING ruby_opts */
-   -3,  /* (28) ruby_stmt ::= RUBY KEY STRING */
-    0,  /* (29) ruby_opts ::= */
-   -4,  /* (30) ruby_opts ::= ruby_opts COMMA KEY STRING */
-   -4,  /* (31) ruby_opts ::= ruby_opts COMMA KEY SYMBOL */
-   -3,  /* (32) ruby_opts ::= ruby_opts COMMA STRING */
-   -2,  /* (33) gemspec_stmt ::= GEMSPEC gemspec_opts */
-   -1,  /* (34) file ::= stmts */
-   -2,  /* (35) stmts ::= stmts stmt */
-    0,  /* (36) stmts ::= */
-   -1,  /* (37) stmt ::= source_stmt */
-   -1,  /* (38) stmt ::= gem_stmt */
-   -1,  /* (39) stmt ::= group_stmt */
-   -1,  /* (40) stmt ::= ruby_stmt */
-   -1,  /* (41) stmt ::= gemspec_stmt */
-   -1,  /* (42) stmt ::= platforms_stmt */
-   -1,  /* (43) stmt ::= plugin_stmt */
-   -1,  /* (44) stmt ::= GIT_SOURCE */
-   -1,  /* (45) stmt ::= NEWLINE */
-   -3,  /* (46) array ::= LBRACKET array_items RBRACKET */
-   -2,  /* (47) array ::= LBRACKET RBRACKET */
-   -1,  /* (48) array ::= PERCENT_ARRAY */
-   -1,  /* (49) array_items ::= SYMBOL */
-   -1,  /* (50) array_items ::= STRING */
-   -3,  /* (51) array_items ::= array_items COMMA SYMBOL */
-   -3,  /* (52) array_items ::= array_items COMMA STRING */
-   -3,  /* (53) platforms_open ::= PLATFORMS platform_names DO */
-   -1,  /* (54) platform_names ::= SYMBOL */
-   -3,  /* (55) platform_names ::= platform_names COMMA SYMBOL */
-    0,  /* (56) gemspec_opts ::= */
-   -4,  /* (57) gemspec_opts ::= gemspec_opts COMMA KEY STRING */
-   -4,  /* (58) gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */
-   -2,  /* (59) gemspec_opts ::= KEY STRING */
-   -2,  /* (60) gemspec_opts ::= KEY SYMBOL */
-   -3,  /* (61) gemspec_opts ::= SYMBOL HASHROCKET STRING */
-   -3,  /* (62) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */
-   -5,  /* (63) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
-   -5,  /* (64) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */
-   -2,  /* (65) plugin_stmt ::= PLUGIN STRING */
-   -4,  /* (66) plugin_stmt ::= PLUGIN STRING COMMA STRING */
+   -5,  /* (5) gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN */
+    0,  /* (6) gem_opts ::= */
+   -3,  /* (7) gem_opts ::= gem_opts COMMA STRING */
+   -4,  /* (8) gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
+   -4,  /* (9) gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
+   -4,  /* (10) gem_opts ::= gem_opts COMMA KEY LIT_NIL */
+   -4,  /* (11) gem_opts ::= gem_opts COMMA KEY SYMBOL */
+   -4,  /* (12) gem_opts ::= gem_opts COMMA KEY STRING */
+   -4,  /* (13) gem_opts ::= gem_opts COMMA KEY array */
+   -5,  /* (14) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
+   -5,  /* (15) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
+   -5,  /* (16) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
+   -5,  /* (17) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
+   -5,  /* (18) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
+   -5,  /* (19) gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
+   -3,  /* (20) gem_opts ::= gem_opts COMMA string_array */
+   -3,  /* (21) string_array ::= LBRACKET string_array_items RBRACKET */
+   -1,  /* (22) string_array_items ::= STRING */
+   -3,  /* (23) string_array_items ::= string_array_items COMMA STRING */
+   -3,  /* (24) group_open ::= GROUP name_list DO */
+   -5,  /* (25) group_open ::= GROUP LPAREN name_list RPAREN DO */
+   -3,  /* (26) group_stmt ::= group_open stmts END */
+   -1,  /* (27) name_list ::= SYMBOL */
+   -1,  /* (28) name_list ::= STRING */
+   -3,  /* (29) name_list ::= name_list COMMA SYMBOL */
+   -3,  /* (30) name_list ::= name_list COMMA STRING */
+   -3,  /* (31) platforms_stmt ::= platforms_open stmts END */
+   -3,  /* (32) ruby_stmt ::= RUBY STRING ruby_opts */
+   -3,  /* (33) ruby_stmt ::= RUBY KEY STRING */
+    0,  /* (34) ruby_opts ::= */
+   -4,  /* (35) ruby_opts ::= ruby_opts COMMA KEY STRING */
+   -4,  /* (36) ruby_opts ::= ruby_opts COMMA KEY SYMBOL */
+   -3,  /* (37) ruby_opts ::= ruby_opts COMMA STRING */
+   -2,  /* (38) gemspec_stmt ::= GEMSPEC gemspec_opts */
+   -1,  /* (39) file ::= stmts */
+   -2,  /* (40) stmts ::= stmts stmt */
+    0,  /* (41) stmts ::= */
+   -1,  /* (42) stmt ::= source_stmt */
+   -1,  /* (43) stmt ::= gem_stmt */
+   -1,  /* (44) stmt ::= group_stmt */
+   -1,  /* (45) stmt ::= ruby_stmt */
+   -1,  /* (46) stmt ::= gemspec_stmt */
+   -1,  /* (47) stmt ::= platforms_stmt */
+   -1,  /* (48) stmt ::= plugin_stmt */
+   -1,  /* (49) stmt ::= path_stmt */
+   -1,  /* (50) stmt ::= git_stmt */
+   -1,  /* (51) stmt ::= github_stmt */
+   -1,  /* (52) stmt ::= install_if_stmt */
+   -1,  /* (53) stmt ::= GIT_SOURCE */
+   -1,  /* (54) stmt ::= NEWLINE */
+   -3,  /* (55) array ::= LBRACKET array_items RBRACKET */
+   -2,  /* (56) array ::= LBRACKET RBRACKET */
+   -1,  /* (57) array ::= PERCENT_ARRAY */
+   -1,  /* (58) array_items ::= SYMBOL */
+   -1,  /* (59) array_items ::= STRING */
+   -3,  /* (60) array_items ::= array_items COMMA SYMBOL */
+   -3,  /* (61) array_items ::= array_items COMMA STRING */
+   -4,  /* (62) name_list ::= name_list COMMA KEY LIT_TRUE */
+   -4,  /* (63) name_list ::= name_list COMMA KEY LIT_FALSE */
+   -4,  /* (64) name_list ::= name_list COMMA KEY STRING */
+   -4,  /* (65) name_list ::= name_list COMMA KEY SYMBOL */
+   -3,  /* (66) platforms_open ::= PLATFORMS platform_names DO */
+   -1,  /* (67) platform_names ::= SYMBOL */
+   -3,  /* (68) platform_names ::= platform_names COMMA SYMBOL */
+    0,  /* (69) block_kw_opts ::= */
+   -4,  /* (70) block_kw_opts ::= block_kw_opts COMMA KEY STRING */
+   -4,  /* (71) block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL */
+   -4,  /* (72) block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE */
+   -4,  /* (73) block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE */
+   -6,  /* (74) path_stmt ::= PATH STRING block_kw_opts DO stmts END */
+   -6,  /* (75) git_stmt ::= GIT STRING block_kw_opts DO stmts END */
+   -6,  /* (76) github_stmt ::= GITHUB STRING block_kw_opts DO stmts END */
+   -4,  /* (77) install_if_stmt ::= INSTALL_IF DO stmts END */
+    0,  /* (78) gemspec_opts ::= */
+   -4,  /* (79) gemspec_opts ::= gemspec_opts COMMA KEY STRING */
+   -4,  /* (80) gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */
+   -2,  /* (81) gemspec_opts ::= KEY STRING */
+   -2,  /* (82) gemspec_opts ::= KEY SYMBOL */
+   -3,  /* (83) gemspec_opts ::= SYMBOL HASHROCKET STRING */
+   -3,  /* (84) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */
+   -5,  /* (85) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
+   -5,  /* (86) gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */
+   -2,  /* (87) plugin_stmt ::= PLUGIN STRING */
+   -4,  /* (88) plugin_stmt ::= PLUGIN STRING COMMA STRING */
 };
 
 static void yy_accept(yyParser*);  /* Forward Declaration */
@@ -1233,15 +1353,15 @@ static YYACTIONTYPE yy_reduce(
 /********** Begin reduce actions **********************************************/
         YYMINORTYPE yylhsminor;
       case 0: /* source_stmt ::= SOURCE STRING */
-#line 144 "src/gemfile/parser.y"
+#line 153 "src/gemfile/parser.y"
 {
     free(gf->source);
     gf->source = tok_strdup(yymsp[0].minor.yy0, 1, 1);
 }
-#line 1241 "src/gemfile/parser.c"
+#line 1361 "src/gemfile/parser.c"
         break;
       case 1: /* source_stmt ::= SOURCE SYMBOL */
-#line 150 "src/gemfile/parser.y"
+#line 159 "src/gemfile/parser.y"
 {
     free(gf->source);
     char *sym = tok_strdup(yymsp[0].minor.yy0, 1, 0);  /* strip leading colon */
@@ -1252,458 +1372,595 @@ static YYACTIONTYPE yy_reduce(
         gf->source = sym;  /* unknown symbol -- store as-is */
     }
 }
-#line 1255 "src/gemfile/parser.c"
+#line 1375 "src/gemfile/parser.c"
         break;
       case 2: /* source_stmt ::= SOURCE STRING DO stmts END */
-#line 164 "src/gemfile/parser.y"
+#line 173 "src/gemfile/parser.y"
 {
     free(gf->source);
     gf->source = tok_strdup(yymsp[-3].minor.yy0, 1, 1);
 }
-#line 1263 "src/gemfile/parser.c"
-  yy_destructor(yypParser,53,&yymsp[-1].minor);
+#line 1383 "src/gemfile/parser.c"
+  yy_destructor(yypParser,59,&yymsp[-1].minor);
         break;
       case 3: /* source_stmt ::= SOURCE LPAREN STRING RPAREN */
-#line 170 "src/gemfile/parser.y"
+#line 179 "src/gemfile/parser.y"
 {
     free(gf->source);
     gf->source = tok_strdup(yymsp[-1].minor.yy0, 1, 1);
 }
-#line 1272 "src/gemfile/parser.c"
+#line 1392 "src/gemfile/parser.c"
         break;
       case 4: /* gem_stmt ::= GEM STRING gem_opts */
-#line 179 "src/gemfile/parser.y"
+#line 188 "src/gemfile/parser.y"
 {
     struct wow_gemfile_dep dep;
     memset(&dep, 0, sizeof(dep));
     dep.name          = tok_strdup(yymsp[-1].minor.yy0, 1, 1);
-    dep.constraints   = yymsp[0].minor.yy96.constraints;
-    dep.n_constraints = yymsp[0].minor.yy96.n_constraints;
-    dep.require       = yymsp[0].minor.yy96.require;
+    dep.constraints   = yymsp[0].minor.yy50.constraints;
+    dep.n_constraints = yymsp[0].minor.yy50.n_constraints;
+    dep.require       = yymsp[0].minor.yy50.require;
 
     /* group: keyword option takes priority over block group */
-    if (yymsp[0].minor.yy96.group) {
-        dep.group = yymsp[0].minor.yy96.group;
+    if (yymsp[0].minor.yy50.group) {
+        dep.group = yymsp[0].minor.yy50.group;
     } else if (gf->_current_group) {
         dep.group = strdup(gf->_current_group);
     }
 
     /* Prevent gem_opts destructor from freeing transferred pointers */
-    yymsp[0].minor.yy96.constraints = NULL;
-    yymsp[0].minor.yy96.n_constraints = 0;
-    yymsp[0].minor.yy96.group = NULL;
+    yymsp[0].minor.yy50.constraints = NULL;
+    yymsp[0].minor.yy50.n_constraints = 0;
+    yymsp[0].minor.yy50.group = NULL;
 
     wow_gemfile_add_dep(gf, &dep);
 }
-#line 1298 "src/gemfile/parser.c"
+#line 1418 "src/gemfile/parser.c"
         break;
-      case 5: /* gem_opts ::= */
-      case 29: /* ruby_opts ::= */ yytestcase(yyruleno==29);
-#line 203 "src/gemfile/parser.y"
+      case 5: /* gem_stmt ::= GEM LPAREN STRING gem_opts RPAREN */
+#line 212 "src/gemfile/parser.y"
 {
-    gem_opts_acc_init(&yymsp[1].minor.yy96);
+    struct wow_gemfile_dep dep;
+    memset(&dep, 0, sizeof(dep));
+    dep.name          = tok_strdup(yymsp[-2].minor.yy0, 1, 1);
+    dep.constraints   = yymsp[-1].minor.yy50.constraints;
+    dep.n_constraints = yymsp[-1].minor.yy50.n_constraints;
+    dep.require       = yymsp[-1].minor.yy50.require;
+
+    if (yymsp[-1].minor.yy50.group) {
+        dep.group = yymsp[-1].minor.yy50.group;
+    } else if (gf->_current_group) {
+        dep.group = strdup(gf->_current_group);
+    }
+
+    yymsp[-1].minor.yy50.constraints = NULL;
+    yymsp[-1].minor.yy50.n_constraints = 0;
+    yymsp[-1].minor.yy50.group = NULL;
+
+    wow_gemfile_add_dep(gf, &dep);
 }
-#line 1306 "src/gemfile/parser.c"
+#line 1442 "src/gemfile/parser.c"
         break;
-      case 6: /* gem_opts ::= gem_opts COMMA STRING */
-#line 207 "src/gemfile/parser.y"
+      case 6: /* gem_opts ::= */
+      case 34: /* ruby_opts ::= */ yytestcase(yyruleno==34);
+#line 234 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-2].minor.yy96;
-    memset(&yymsp[-2].minor.yy96, 0, sizeof(yymsp[-2].minor.yy96));  /* prevent double-free */
-    gem_opts_acc_add_constraint(&yylhsminor.yy96, tok_strdup(yymsp[0].minor.yy0, 1, 1));
+    gem_opts_acc_init(&yymsp[1].minor.yy50);
 }
-#line 1315 "src/gemfile/parser.c"
-  yymsp[-2].minor.yy96 = yylhsminor.yy96;
+#line 1450 "src/gemfile/parser.c"
         break;
-      case 7: /* gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
-#line 213 "src/gemfile/parser.y"
+      case 7: /* gem_opts ::= gem_opts COMMA STRING */
+#line 238 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-2].minor.yy50;
+    memset(&yymsp[-2].minor.yy50, 0, sizeof(yymsp[-2].minor.yy50));  /* prevent double-free */
+    gem_opts_acc_add_constraint(&yylhsminor.yy50, tok_strdup(yymsp[0].minor.yy0, 1, 1));
+}
+#line 1459 "src/gemfile/parser.c"
+  yymsp[-2].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 8: /* gem_opts ::= gem_opts COMMA KEY LIT_FALSE */
+#line 244 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
     char *key = tok_strdup(yymsp[-1].minor.yy0, 0, 1);  /* strip trailing colon */
     if (strcmp(key, "require") == 0)
-        yylhsminor.yy96.require = false;
+        yylhsminor.yy50.require = false;
     free(key);
 }
-#line 1328 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1472 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 8: /* gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
-#line 222 "src/gemfile/parser.y"
+      case 9: /* gem_opts ::= gem_opts COMMA KEY LIT_TRUE */
+#line 253 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
     (void)yymsp[-1].minor.yy0;  /* require: true is the default */
 }
-#line 1338 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1482 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 9: /* gem_opts ::= gem_opts COMMA KEY LIT_NIL */
-#line 228 "src/gemfile/parser.y"
+      case 10: /* gem_opts ::= gem_opts COMMA KEY LIT_NIL */
+#line 259 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
     char *key = tok_strdup(yymsp[-1].minor.yy0, 0, 1);
     if (strcmp(key, "require") == 0)
-        yylhsminor.yy96.require = false;  /* require: nil == require: false */
+        yylhsminor.yy50.require = false;  /* require: nil == require: false */
     free(key);
 }
-#line 1351 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1495 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 10: /* gem_opts ::= gem_opts COMMA KEY SYMBOL */
-#line 237 "src/gemfile/parser.y"
+      case 11: /* gem_opts ::= gem_opts COMMA KEY SYMBOL */
+#line 268 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
     char *key = tok_strdup(yymsp[-1].minor.yy0, 0, 1);  /* strip trailing colon */
     if (strcmp(key, "group") == 0 || strcmp(key, "groups") == 0) {
-        free(yylhsminor.yy96.group);
-        yylhsminor.yy96.group = tok_strdup(yymsp[0].minor.yy0, 1, 0);  /* strip leading colon */
+        free(yylhsminor.yy50.group);
+        yylhsminor.yy50.group = tok_strdup(yymsp[0].minor.yy0, 1, 0);  /* strip leading colon */
     }
     free(key);
 }
-#line 1366 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1510 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 11: /* gem_opts ::= gem_opts COMMA KEY STRING */
-#line 248 "src/gemfile/parser.y"
+      case 12: /* gem_opts ::= gem_opts COMMA KEY STRING */
+#line 279 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
     /* Unknown key with string value -- accept but ignore (path:, git:, etc.) */
 }
-#line 1376 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1520 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 12: /* gem_opts ::= gem_opts COMMA KEY array */
-#line 254 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
-    /* Key with array value -- accept but ignore (platforms:, groups:, etc.) */
-}
-#line 1386 "src/gemfile/parser.c"
-  yy_destructor(yypParser,62,&yymsp[0].minor);
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 13: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
-#line 261 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
-    char *key = tok_strdup(yymsp[-2].minor.yy0, 1, 0);  /* strip leading colon */
-    if (strcmp(key, "require") == 0)
-        yylhsminor.yy96.require = false;
-    free(key);
-}
-#line 1400 "src/gemfile/parser.c"
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 14: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
-#line 270 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
-    (void)yymsp[-2].minor.yy0;
-}
-#line 1410 "src/gemfile/parser.c"
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 15: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
-#line 276 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
-    char *key = tok_strdup(yymsp[-2].minor.yy0, 1, 0);
-    if (strcmp(key, "require") == 0)
-        yylhsminor.yy96.require = false;
-    free(key);
-}
-#line 1423 "src/gemfile/parser.c"
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 16: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
+      case 13: /* gem_opts ::= gem_opts COMMA KEY array */
 #line 285 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
+    /* Key with array value -- accept but ignore (platforms:, groups:, etc.) */
+}
+#line 1530 "src/gemfile/parser.c"
+  yy_destructor(yypParser,72,&yymsp[0].minor);
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 14: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_FALSE */
+#line 292 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
+    char *key = tok_strdup(yymsp[-2].minor.yy0, 1, 0);  /* strip leading colon */
+    if (strcmp(key, "require") == 0)
+        yylhsminor.yy50.require = false;
+    free(key);
+}
+#line 1544 "src/gemfile/parser.c"
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 15: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_TRUE */
+#line 301 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
+    (void)yymsp[-2].minor.yy0;
+}
+#line 1554 "src/gemfile/parser.c"
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 16: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET LIT_NIL */
+#line 307 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
+    char *key = tok_strdup(yymsp[-2].minor.yy0, 1, 0);
+    if (strcmp(key, "require") == 0)
+        yylhsminor.yy50.require = false;
+    free(key);
+}
+#line 1567 "src/gemfile/parser.c"
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 17: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET SYMBOL */
+#line 316 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
     char *key = tok_strdup(yymsp[-2].minor.yy0, 1, 0);
     if (strcmp(key, "group") == 0) {
-        free(yylhsminor.yy96.group);
-        yylhsminor.yy96.group = tok_strdup(yymsp[0].minor.yy0, 1, 0);
+        free(yylhsminor.yy50.group);
+        yylhsminor.yy50.group = tok_strdup(yymsp[0].minor.yy0, 1, 0);
     }
     free(key);
 }
-#line 1438 "src/gemfile/parser.c"
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
+#line 1582 "src/gemfile/parser.c"
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
         break;
-      case 17: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
-#line 296 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
-    /* Unknown hashrocket key with string value -- ignore */
-}
-#line 1448 "src/gemfile/parser.c"
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 18: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
-#line 302 "src/gemfile/parser.y"
-{
-    yylhsminor.yy96 = yymsp[-4].minor.yy96;
-    memset(&yymsp[-4].minor.yy96, 0, sizeof(yymsp[-4].minor.yy96));
-    /* Hashrocket key with array value -- accept but ignore */
-}
-#line 1458 "src/gemfile/parser.c"
-  yy_destructor(yypParser,62,&yymsp[0].minor);
-  yymsp[-4].minor.yy96 = yylhsminor.yy96;
-        break;
-      case 19: /* group_open ::= GROUP name_list DO */
+      case 18: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET STRING */
 #line 327 "src/gemfile/parser.y"
 {
-    /* _current_group was set by name_list reduction */
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
+    /* Unknown hashrocket key with string value -- ignore */
 }
-#line 1467 "src/gemfile/parser.c"
-  yy_destructor(yypParser,65,&yymsp[-1].minor);
+#line 1592 "src/gemfile/parser.c"
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
         break;
-      case 20: /* group_open ::= GROUP LPAREN name_list RPAREN DO */
-#line 331 "src/gemfile/parser.y"
+      case 19: /* gem_opts ::= gem_opts COMMA SYMBOL HASHROCKET array */
+#line 333 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-4].minor.yy50;
+    memset(&yymsp[-4].minor.yy50, 0, sizeof(yymsp[-4].minor.yy50));
+    /* Hashrocket key with array value -- accept but ignore */
+}
+#line 1602 "src/gemfile/parser.c"
+  yy_destructor(yypParser,72,&yymsp[0].minor);
+  yymsp[-4].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 20: /* gem_opts ::= gem_opts COMMA string_array */
+#line 340 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-2].minor.yy50;
+    memset(&yymsp[-2].minor.yy50, 0, sizeof(yymsp[-2].minor.yy50));
+    for (int i = 0; i < yymsp[0].minor.yy50.n_constraints; i++)
+        gem_opts_acc_add_constraint(&yylhsminor.yy50, yymsp[0].minor.yy50.constraints[i]);
+    free(yymsp[0].minor.yy50.constraints);  /* strings transferred, free container only */
+    yymsp[0].minor.yy50.constraints = NULL;
+    yymsp[0].minor.yy50.n_constraints = 0;
+}
+#line 1617 "src/gemfile/parser.c"
+  yymsp[-2].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 21: /* string_array ::= LBRACKET string_array_items RBRACKET */
+#line 354 "src/gemfile/parser.y"
+{
+    yymsp[-2].minor.yy50 = yymsp[-1].minor.yy50;
+    memset(&yymsp[-1].minor.yy50, 0, sizeof(yymsp[-1].minor.yy50));
+}
+#line 1626 "src/gemfile/parser.c"
+        break;
+      case 22: /* string_array_items ::= STRING */
+#line 359 "src/gemfile/parser.y"
+{
+    gem_opts_acc_init(&yylhsminor.yy50);
+    gem_opts_acc_add_constraint(&yylhsminor.yy50, tok_strdup(yymsp[0].minor.yy0, 1, 1));
+}
+#line 1634 "src/gemfile/parser.c"
+  yymsp[0].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 23: /* string_array_items ::= string_array_items COMMA STRING */
+#line 364 "src/gemfile/parser.y"
+{
+    yylhsminor.yy50 = yymsp[-2].minor.yy50;
+    memset(&yymsp[-2].minor.yy50, 0, sizeof(yymsp[-2].minor.yy50));
+    gem_opts_acc_add_constraint(&yylhsminor.yy50, tok_strdup(yymsp[0].minor.yy0, 1, 1));
+}
+#line 1644 "src/gemfile/parser.c"
+  yymsp[-2].minor.yy50 = yylhsminor.yy50;
+        break;
+      case 24: /* group_open ::= GROUP name_list DO */
+#line 389 "src/gemfile/parser.y"
 {
     /* _current_group was set by name_list reduction */
 }
-#line 1475 "src/gemfile/parser.c"
-  yy_destructor(yypParser,65,&yymsp[-2].minor);
+#line 1652 "src/gemfile/parser.c"
+  yy_destructor(yypParser,75,&yymsp[-1].minor);
         break;
-      case 21: /* group_stmt ::= group_open stmts END */
-{  yy_destructor(yypParser,64,&yymsp[-2].minor);
-#line 335 "src/gemfile/parser.y"
+      case 25: /* group_open ::= GROUP LPAREN name_list RPAREN DO */
+#line 393 "src/gemfile/parser.y"
+{
+    /* _current_group was set by name_list reduction */
+}
+#line 1660 "src/gemfile/parser.c"
+  yy_destructor(yypParser,75,&yymsp[-2].minor);
+        break;
+      case 26: /* group_stmt ::= group_open stmts END */
+{  yy_destructor(yypParser,74,&yymsp[-2].minor);
+#line 397 "src/gemfile/parser.y"
 {
     free(gf->_current_group);
     gf->_current_group = NULL;
 }
-#line 1485 "src/gemfile/parser.c"
-  yy_destructor(yypParser,53,&yymsp[-1].minor);
+#line 1670 "src/gemfile/parser.c"
+  yy_destructor(yypParser,59,&yymsp[-1].minor);
 }
         break;
-      case 22: /* name_list ::= SYMBOL */
-#line 340 "src/gemfile/parser.y"
+      case 27: /* name_list ::= SYMBOL */
+#line 402 "src/gemfile/parser.y"
 {
     free(gf->_current_group);
     gf->_current_group = tok_strdup(yymsp[0].minor.yy0, 1, 0);  /* strip leading colon */
 }
-#line 1495 "src/gemfile/parser.c"
+#line 1680 "src/gemfile/parser.c"
         break;
-      case 23: /* name_list ::= STRING */
-#line 345 "src/gemfile/parser.y"
+      case 28: /* name_list ::= STRING */
+#line 407 "src/gemfile/parser.y"
 {
     free(gf->_current_group);
     gf->_current_group = tok_strdup(yymsp[0].minor.yy0, 1, 1);  /* strip quotes */
 }
-#line 1503 "src/gemfile/parser.c"
+#line 1688 "src/gemfile/parser.c"
         break;
-      case 24: /* name_list ::= name_list COMMA SYMBOL */
-      case 25: /* name_list ::= name_list COMMA STRING */ yytestcase(yyruleno==25);
-{  yy_destructor(yypParser,65,&yymsp[-2].minor);
-#line 350 "src/gemfile/parser.y"
+      case 29: /* name_list ::= name_list COMMA SYMBOL */
+      case 30: /* name_list ::= name_list COMMA STRING */ yytestcase(yyruleno==30);
+{  yy_destructor(yypParser,75,&yymsp[-2].minor);
+#line 412 "src/gemfile/parser.y"
 {
     /* Keep the first name, ignore subsequent ones */
 }
-#line 1512 "src/gemfile/parser.c"
+#line 1697 "src/gemfile/parser.c"
 }
         break;
-      case 26: /* platforms_stmt ::= platforms_open stmts END */
-{  yy_destructor(yypParser,66,&yymsp[-2].minor);
-#line 365 "src/gemfile/parser.y"
+      case 31: /* platforms_stmt ::= platforms_open stmts END */
+{  yy_destructor(yypParser,76,&yymsp[-2].minor);
+#line 433 "src/gemfile/parser.y"
 {
     /* Gems inside are collected normally; platform filter is ignored */
 }
-#line 1521 "src/gemfile/parser.c"
-  yy_destructor(yypParser,53,&yymsp[-1].minor);
+#line 1706 "src/gemfile/parser.c"
+  yy_destructor(yypParser,59,&yymsp[-1].minor);
 }
         break;
-      case 27: /* ruby_stmt ::= RUBY STRING ruby_opts */
-#line 377 "src/gemfile/parser.y"
+      case 32: /* ruby_stmt ::= RUBY STRING ruby_opts */
+#line 468 "src/gemfile/parser.y"
 {
     free(gf->ruby_version);
     gf->ruby_version = tok_strdup(yymsp[-1].minor.yy0, 1, 1);
-    gem_opts_acc_free(&yymsp[0].minor.yy96);
+    gem_opts_acc_free(&yymsp[0].minor.yy50);
 }
-#line 1532 "src/gemfile/parser.c"
+#line 1717 "src/gemfile/parser.c"
         break;
-      case 28: /* ruby_stmt ::= RUBY KEY STRING */
-#line 383 "src/gemfile/parser.y"
+      case 33: /* ruby_stmt ::= RUBY KEY STRING */
+#line 474 "src/gemfile/parser.y"
 {
     /* ruby file: ".ruby-version" -- accept but don't store version */
 }
-#line 1539 "src/gemfile/parser.c"
+#line 1724 "src/gemfile/parser.c"
         break;
-      case 30: /* ruby_opts ::= ruby_opts COMMA KEY STRING */
-      case 31: /* ruby_opts ::= ruby_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==31);
-#line 392 "src/gemfile/parser.y"
+      case 35: /* ruby_opts ::= ruby_opts COMMA KEY STRING */
+      case 36: /* ruby_opts ::= ruby_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==36);
+#line 483 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-3].minor.yy96;
-    memset(&yymsp[-3].minor.yy96, 0, sizeof(yymsp[-3].minor.yy96));
+    yylhsminor.yy50 = yymsp[-3].minor.yy50;
+    memset(&yymsp[-3].minor.yy50, 0, sizeof(yymsp[-3].minor.yy50));
 }
-#line 1548 "src/gemfile/parser.c"
-  yymsp[-3].minor.yy96 = yylhsminor.yy96;
+#line 1733 "src/gemfile/parser.c"
+  yymsp[-3].minor.yy50 = yylhsminor.yy50;
         break;
-      case 32: /* ruby_opts ::= ruby_opts COMMA STRING */
-#line 402 "src/gemfile/parser.y"
+      case 37: /* ruby_opts ::= ruby_opts COMMA STRING */
+#line 493 "src/gemfile/parser.y"
 {
-    yylhsminor.yy96 = yymsp[-2].minor.yy96;
-    memset(&yymsp[-2].minor.yy96, 0, sizeof(yymsp[-2].minor.yy96));
+    yylhsminor.yy50 = yymsp[-2].minor.yy50;
+    memset(&yymsp[-2].minor.yy50, 0, sizeof(yymsp[-2].minor.yy50));
     /* ruby "~> 3.2", ">= 3.2.1" -- version constraints, ignored */
 }
-#line 1558 "src/gemfile/parser.c"
-  yymsp[-2].minor.yy96 = yylhsminor.yy96;
+#line 1743 "src/gemfile/parser.c"
+  yymsp[-2].minor.yy50 = yylhsminor.yy50;
         break;
-      case 33: /* gemspec_stmt ::= GEMSPEC gemspec_opts */
-#line 412 "src/gemfile/parser.y"
+      case 38: /* gemspec_stmt ::= GEMSPEC gemspec_opts */
+#line 503 "src/gemfile/parser.y"
 {
     gf->has_gemspec = true;
 }
-#line 1566 "src/gemfile/parser.c"
-  yy_destructor(yypParser,68,&yymsp[0].minor);
+#line 1751 "src/gemfile/parser.c"
+  yy_destructor(yypParser,79,&yymsp[0].minor);
         break;
-      case 34: /* file ::= stmts */
-{  yy_destructor(yypParser,53,&yymsp[0].minor);
-#line 122 "src/gemfile/parser.y"
-{
-}
-#line 1574 "src/gemfile/parser.c"
-}
-        break;
-      case 35: /* stmts ::= stmts stmt */
-{  yy_destructor(yypParser,53,&yymsp[-1].minor);
-#line 124 "src/gemfile/parser.y"
-{
-}
-#line 1582 "src/gemfile/parser.c"
-  yy_destructor(yypParser,54,&yymsp[0].minor);
-}
-        break;
-      case 37: /* stmt ::= source_stmt */
-{  yy_destructor(yypParser,55,&yymsp[0].minor);
+      case 39: /* file ::= stmts */
+{  yy_destructor(yypParser,59,&yymsp[0].minor);
 #line 127 "src/gemfile/parser.y"
 {
 }
-#line 1591 "src/gemfile/parser.c"
+#line 1759 "src/gemfile/parser.c"
 }
         break;
-      case 38: /* stmt ::= gem_stmt */
-{  yy_destructor(yypParser,56,&yymsp[0].minor);
-#line 128 "src/gemfile/parser.y"
-{
-}
-#line 1599 "src/gemfile/parser.c"
-}
-        break;
-      case 39: /* stmt ::= group_stmt */
-{  yy_destructor(yypParser,57,&yymsp[0].minor);
+      case 40: /* stmts ::= stmts stmt */
+{  yy_destructor(yypParser,59,&yymsp[-1].minor);
 #line 129 "src/gemfile/parser.y"
 {
 }
-#line 1607 "src/gemfile/parser.c"
+#line 1767 "src/gemfile/parser.c"
+  yy_destructor(yypParser,60,&yymsp[0].minor);
 }
         break;
-      case 40: /* stmt ::= ruby_stmt */
-{  yy_destructor(yypParser,58,&yymsp[0].minor);
-#line 130 "src/gemfile/parser.y"
-{
-}
-#line 1615 "src/gemfile/parser.c"
-}
-        break;
-      case 41: /* stmt ::= gemspec_stmt */
-{  yy_destructor(yypParser,59,&yymsp[0].minor);
-#line 131 "src/gemfile/parser.y"
-{
-}
-#line 1623 "src/gemfile/parser.c"
-}
-        break;
-      case 42: /* stmt ::= platforms_stmt */
-{  yy_destructor(yypParser,60,&yymsp[0].minor);
+      case 42: /* stmt ::= source_stmt */
+{  yy_destructor(yypParser,61,&yymsp[0].minor);
 #line 132 "src/gemfile/parser.y"
 {
 }
-#line 1631 "src/gemfile/parser.c"
+#line 1776 "src/gemfile/parser.c"
 }
         break;
-      case 43: /* stmt ::= plugin_stmt */
-{  yy_destructor(yypParser,61,&yymsp[0].minor);
+      case 43: /* stmt ::= gem_stmt */
+{  yy_destructor(yypParser,62,&yymsp[0].minor);
 #line 133 "src/gemfile/parser.y"
 {
 }
-#line 1639 "src/gemfile/parser.c"
+#line 1784 "src/gemfile/parser.c"
 }
         break;
-      case 46: /* array ::= LBRACKET array_items RBRACKET */
-#line 312 "src/gemfile/parser.y"
+      case 44: /* stmt ::= group_stmt */
+{  yy_destructor(yypParser,63,&yymsp[0].minor);
+#line 134 "src/gemfile/parser.y"
 {
 }
-#line 1646 "src/gemfile/parser.c"
-  yy_destructor(yypParser,63,&yymsp[-1].minor);
-        break;
-      case 51: /* array_items ::= array_items COMMA SYMBOL */
-      case 52: /* array_items ::= array_items COMMA STRING */ yytestcase(yyruleno==52);
-{  yy_destructor(yypParser,63,&yymsp[-2].minor);
-#line 318 "src/gemfile/parser.y"
-{
-}
-#line 1655 "src/gemfile/parser.c"
+#line 1792 "src/gemfile/parser.c"
 }
         break;
-      case 53: /* platforms_open ::= PLATFORMS platform_names DO */
-#line 363 "src/gemfile/parser.y"
+      case 45: /* stmt ::= ruby_stmt */
+{  yy_destructor(yypParser,64,&yymsp[0].minor);
+#line 135 "src/gemfile/parser.y"
 {
 }
-#line 1662 "src/gemfile/parser.c"
-  yy_destructor(yypParser,67,&yymsp[-1].minor);
-        break;
-      case 55: /* platform_names ::= platform_names COMMA SYMBOL */
-{  yy_destructor(yypParser,67,&yymsp[-2].minor);
-#line 370 "src/gemfile/parser.y"
-{
-}
-#line 1670 "src/gemfile/parser.c"
+#line 1800 "src/gemfile/parser.c"
 }
         break;
-      case 57: /* gemspec_opts ::= gemspec_opts COMMA KEY STRING */
-      case 58: /* gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==58);
-{  yy_destructor(yypParser,68,&yymsp[-3].minor);
-#line 419 "src/gemfile/parser.y"
+      case 46: /* stmt ::= gemspec_stmt */
+{  yy_destructor(yypParser,65,&yymsp[0].minor);
+#line 136 "src/gemfile/parser.y"
 {
 }
-#line 1679 "src/gemfile/parser.c"
+#line 1808 "src/gemfile/parser.c"
 }
         break;
-      case 63: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
-      case 64: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */ yytestcase(yyruleno==64);
-{  yy_destructor(yypParser,68,&yymsp[-4].minor);
-#line 429 "src/gemfile/parser.y"
+      case 47: /* stmt ::= platforms_stmt */
+{  yy_destructor(yypParser,66,&yymsp[0].minor);
+#line 137 "src/gemfile/parser.y"
 {
 }
-#line 1688 "src/gemfile/parser.c"
+#line 1816 "src/gemfile/parser.c"
+}
+        break;
+      case 48: /* stmt ::= plugin_stmt */
+{  yy_destructor(yypParser,67,&yymsp[0].minor);
+#line 138 "src/gemfile/parser.y"
+{
+}
+#line 1824 "src/gemfile/parser.c"
+}
+        break;
+      case 49: /* stmt ::= path_stmt */
+{  yy_destructor(yypParser,68,&yymsp[0].minor);
+#line 139 "src/gemfile/parser.y"
+{
+}
+#line 1832 "src/gemfile/parser.c"
+}
+        break;
+      case 50: /* stmt ::= git_stmt */
+{  yy_destructor(yypParser,69,&yymsp[0].minor);
+#line 140 "src/gemfile/parser.y"
+{
+}
+#line 1840 "src/gemfile/parser.c"
+}
+        break;
+      case 51: /* stmt ::= github_stmt */
+{  yy_destructor(yypParser,70,&yymsp[0].minor);
+#line 141 "src/gemfile/parser.y"
+{
+}
+#line 1848 "src/gemfile/parser.c"
+}
+        break;
+      case 52: /* stmt ::= install_if_stmt */
+{  yy_destructor(yypParser,71,&yymsp[0].minor);
+#line 142 "src/gemfile/parser.y"
+{
+}
+#line 1856 "src/gemfile/parser.c"
+}
+        break;
+      case 55: /* array ::= LBRACKET array_items RBRACKET */
+#line 374 "src/gemfile/parser.y"
+{
+}
+#line 1863 "src/gemfile/parser.c"
+  yy_destructor(yypParser,73,&yymsp[-1].minor);
+        break;
+      case 60: /* array_items ::= array_items COMMA SYMBOL */
+      case 61: /* array_items ::= array_items COMMA STRING */ yytestcase(yyruleno==61);
+{  yy_destructor(yypParser,73,&yymsp[-2].minor);
+#line 380 "src/gemfile/parser.y"
+{
+}
+#line 1872 "src/gemfile/parser.c"
+}
+        break;
+      case 62: /* name_list ::= name_list COMMA KEY LIT_TRUE */
+      case 63: /* name_list ::= name_list COMMA KEY LIT_FALSE */ yytestcase(yyruleno==63);
+      case 64: /* name_list ::= name_list COMMA KEY STRING */ yytestcase(yyruleno==64);
+      case 65: /* name_list ::= name_list COMMA KEY SYMBOL */ yytestcase(yyruleno==65);
+{  yy_destructor(yypParser,75,&yymsp[-3].minor);
+#line 421 "src/gemfile/parser.y"
+{
+}
+#line 1883 "src/gemfile/parser.c"
+}
+        break;
+      case 66: /* platforms_open ::= PLATFORMS platform_names DO */
+#line 431 "src/gemfile/parser.y"
+{
+}
+#line 1890 "src/gemfile/parser.c"
+  yy_destructor(yypParser,77,&yymsp[-1].minor);
+        break;
+      case 68: /* platform_names ::= platform_names COMMA SYMBOL */
+{  yy_destructor(yypParser,77,&yymsp[-2].minor);
+#line 438 "src/gemfile/parser.y"
+{
+}
+#line 1898 "src/gemfile/parser.c"
+}
+        break;
+      case 70: /* block_kw_opts ::= block_kw_opts COMMA KEY STRING */
+      case 71: /* block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==71);
+      case 72: /* block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE */ yytestcase(yyruleno==72);
+      case 73: /* block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE */ yytestcase(yyruleno==73);
+{  yy_destructor(yypParser,78,&yymsp[-3].minor);
+#line 448 "src/gemfile/parser.y"
+{
+}
+#line 1909 "src/gemfile/parser.c"
+}
+        break;
+      case 74: /* path_stmt ::= PATH STRING block_kw_opts DO stmts END */
+      case 75: /* git_stmt ::= GIT STRING block_kw_opts DO stmts END */ yytestcase(yyruleno==75);
+      case 76: /* github_stmt ::= GITHUB STRING block_kw_opts DO stmts END */ yytestcase(yyruleno==76);
+#line 453 "src/gemfile/parser.y"
+{
+}
+#line 1918 "src/gemfile/parser.c"
+  yy_destructor(yypParser,78,&yymsp[-3].minor);
+  yy_destructor(yypParser,59,&yymsp[-1].minor);
+        break;
+      case 77: /* install_if_stmt ::= INSTALL_IF DO stmts END */
+#line 461 "src/gemfile/parser.y"
+{
+}
+#line 1926 "src/gemfile/parser.c"
+  yy_destructor(yypParser,59,&yymsp[-1].minor);
+        break;
+      case 79: /* gemspec_opts ::= gemspec_opts COMMA KEY STRING */
+      case 80: /* gemspec_opts ::= gemspec_opts COMMA KEY SYMBOL */ yytestcase(yyruleno==80);
+{  yy_destructor(yypParser,79,&yymsp[-3].minor);
+#line 510 "src/gemfile/parser.y"
+{
+}
+#line 1935 "src/gemfile/parser.c"
+}
+        break;
+      case 85: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET STRING */
+      case 86: /* gemspec_opts ::= gemspec_opts COMMA SYMBOL HASHROCKET SYMBOL */ yytestcase(yyruleno==86);
+{  yy_destructor(yypParser,79,&yymsp[-4].minor);
+#line 520 "src/gemfile/parser.y"
+{
+}
+#line 1944 "src/gemfile/parser.c"
 }
         break;
       default:
-      /* (36) stmts ::= */ yytestcase(yyruleno==36);
-      /* (44) stmt ::= GIT_SOURCE */ yytestcase(yyruleno==44);
-      /* (45) stmt ::= NEWLINE */ yytestcase(yyruleno==45);
-      /* (47) array ::= LBRACKET RBRACKET */ yytestcase(yyruleno==47);
-      /* (48) array ::= PERCENT_ARRAY */ yytestcase(yyruleno==48);
-      /* (49) array_items ::= SYMBOL */ yytestcase(yyruleno==49);
-      /* (50) array_items ::= STRING */ yytestcase(yyruleno==50);
-      /* (54) platform_names ::= SYMBOL */ yytestcase(yyruleno==54);
-      /* (56) gemspec_opts ::= */ yytestcase(yyruleno==56);
-      /* (59) gemspec_opts ::= KEY STRING */ yytestcase(yyruleno==59);
-      /* (60) gemspec_opts ::= KEY SYMBOL */ yytestcase(yyruleno==60);
-      /* (61) gemspec_opts ::= SYMBOL HASHROCKET STRING */ yytestcase(yyruleno==61);
-      /* (62) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */ yytestcase(yyruleno==62);
-      /* (65) plugin_stmt ::= PLUGIN STRING */ yytestcase(yyruleno==65);
-      /* (66) plugin_stmt ::= PLUGIN STRING COMMA STRING */ yytestcase(yyruleno==66);
+      /* (41) stmts ::= */ yytestcase(yyruleno==41);
+      /* (53) stmt ::= GIT_SOURCE */ yytestcase(yyruleno==53);
+      /* (54) stmt ::= NEWLINE */ yytestcase(yyruleno==54);
+      /* (56) array ::= LBRACKET RBRACKET */ yytestcase(yyruleno==56);
+      /* (57) array ::= PERCENT_ARRAY */ yytestcase(yyruleno==57);
+      /* (58) array_items ::= SYMBOL */ yytestcase(yyruleno==58);
+      /* (59) array_items ::= STRING */ yytestcase(yyruleno==59);
+      /* (67) platform_names ::= SYMBOL */ yytestcase(yyruleno==67);
+      /* (69) block_kw_opts ::= */ yytestcase(yyruleno==69);
+      /* (78) gemspec_opts ::= */ yytestcase(yyruleno==78);
+      /* (81) gemspec_opts ::= KEY STRING */ yytestcase(yyruleno==81);
+      /* (82) gemspec_opts ::= KEY SYMBOL */ yytestcase(yyruleno==82);
+      /* (83) gemspec_opts ::= SYMBOL HASHROCKET STRING */ yytestcase(yyruleno==83);
+      /* (84) gemspec_opts ::= SYMBOL HASHROCKET SYMBOL */ yytestcase(yyruleno==84);
+      /* (87) plugin_stmt ::= PLUGIN STRING */ yytestcase(yyruleno==87);
+      /* (88) plugin_stmt ::= PLUGIN STRING COMMA STRING */ yytestcase(yyruleno==88);
         break;
 /********** End reduce actions ************************************************/
   };
@@ -1745,10 +2002,10 @@ static void yy_parse_failed(
   /* Here code is inserted which will be executed whenever the
   ** parser fails */
 /************ Begin %parse_failure code ***************************************/
-#line 114 "src/gemfile/parser.y"
+#line 119 "src/gemfile/parser.y"
 
     fprintf(stderr, "wow: Gemfile parsing failed\n");
-#line 1751 "src/gemfile/parser.c"
+#line 2008 "src/gemfile/parser.c"
 /************ End %parse_failure code *****************************************/
   ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseCTX_STORE
@@ -1767,14 +2024,14 @@ static void yy_syntax_error(
   ParseCTX_FETCH
 #define TOKEN yyminor
 /************ Begin %syntax_error code ****************************************/
-#line 106 "src/gemfile/parser.y"
+#line 111 "src/gemfile/parser.y"
 
     (void)yymajor;
     (void)yyminor;
     fprintf(stderr, "wow: Gemfile syntax error at line %d\n",
             TOKEN.line);
     gf->_deps_cap = (size_t)-1;  /* signal error */
-#line 1777 "src/gemfile/parser.c"
+#line 2034 "src/gemfile/parser.c"
 /************ End %syntax_error code ******************************************/
   ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
   ParseCTX_STORE

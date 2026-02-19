@@ -1348,6 +1348,184 @@ static void test_eval_realworld(void)
     wow_gemfile_free(&gf);
 }
 
+/* ── Test: group :x, optional: true do (keyword args in group) ──── */
+
+static const char GROUP_OPTIONAL[] =
+    "source \"https://rubygems.org\"\n"
+    "group :development, optional: true do\n"
+    "  gem \"pry\"\n"
+    "end\n";
+
+static void test_group_optional(void)
+{
+    printf("test_group_optional:\n");
+    struct wow_gemfile gf;
+    int rc = parse(GROUP_OPTIONAL, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("pry group=development",
+          gf.n_deps > 0 && gf.deps[0].group &&
+          strcmp(gf.deps[0].group, "development") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: group with multiple keyword args ─────────────────────── */
+
+static const char GROUP_MULTI_KW[] =
+    "source \"https://rubygems.org\"\n"
+    "group :development, :test, optional: true do\n"
+    "  gem \"rspec\"\n"
+    "end\n";
+
+static void test_group_multi_kw(void)
+{
+    printf("test_group_multi_kw:\n");
+    struct wow_gemfile gf;
+    int rc = parse(GROUP_MULTI_KW, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("rspec group=development",
+          gf.n_deps > 0 && gf.deps[0].group &&
+          strcmp(gf.deps[0].group, "development") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: gem 'x', ['>= 1', '< 2'] array constraints ──────────── */
+
+static const char ARRAY_CONSTRAINTS[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"rails\", [\"~> 7.0\", \">= 7.0.1\"]\n";
+
+static void test_array_constraints(void)
+{
+    printf("test_array_constraints:\n");
+    struct wow_gemfile gf;
+    int rc = parse(ARRAY_CONSTRAINTS, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = rails", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "rails") == 0);
+    check("2 constraints", gf.n_deps > 0 && gf.deps[0].n_constraints == 2);
+    check("constraint[0] = ~> 7.0", gf.n_deps > 0 &&
+          gf.deps[0].n_constraints > 0 &&
+          strcmp(gf.deps[0].constraints[0], "~> 7.0") == 0);
+    check("constraint[1] = >= 7.0.1", gf.n_deps > 0 &&
+          gf.deps[0].n_constraints > 1 &&
+          strcmp(gf.deps[0].constraints[1], ">= 7.0.1") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: gem("name", "~> 1.0") parenthesised call ─────────────── */
+
+static const char PAREN_GEM[] =
+    "source \"https://rubygems.org\"\n"
+    "gem(\"sinatra\", \"~> 4.0\", require: false)\n";
+
+static void test_paren_gem(void)
+{
+    printf("test_paren_gem:\n");
+    struct wow_gemfile gf;
+    int rc = parse(PAREN_GEM, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = sinatra", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "sinatra") == 0);
+    check("constraint ~> 4.0", gf.n_deps > 0 &&
+          gf.deps[0].n_constraints > 0 &&
+          strcmp(gf.deps[0].constraints[0], "~> 4.0") == 0);
+    check("require=false", gf.n_deps > 0 && gf.deps[0].require == false);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: path "." do ... end block ────────────────────────────── */
+
+static const char PATH_BLOCK[] =
+    "source \"https://rubygems.org\"\n"
+    "path \".\" do\n"
+    "  gem \"my-local-gem\"\n"
+    "end\n"
+    "gem \"sinatra\"\n";
+
+static void test_path_block(void)
+{
+    printf("test_path_block:\n");
+    struct wow_gemfile gf;
+    int rc = parse(PATH_BLOCK, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = my-local-gem", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "my-local-gem") == 0);
+    check("dep[1] = sinatra", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "sinatra") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: git "url" do ... end block ───────────────────────────── */
+
+static const char GIT_BLOCK[] =
+    "source \"https://rubygems.org\"\n"
+    "git \"https://github.com/rails/rails.git\", branch: :main do\n"
+    "  gem \"activesupport\"\n"
+    "  gem \"activerecord\"\n"
+    "end\n";
+
+static void test_git_block(void)
+{
+    printf("test_git_block:\n");
+    struct wow_gemfile gf;
+    int rc = parse(GIT_BLOCK, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = activesupport", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "activesupport") == 0);
+    check("dep[1] = activerecord", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "activerecord") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: github "org/repo" do ... end block ───────────────────── */
+
+static const char GITHUB_BLOCK[] =
+    "source \"https://rubygems.org\"\n"
+    "github \"rails/rails\", branch: :main do\n"
+    "  gem \"railties\"\n"
+    "end\n";
+
+static void test_github_block(void)
+{
+    printf("test_github_block:\n");
+    struct wow_gemfile gf;
+    int rc = parse(GITHUB_BLOCK, &gf);
+    check("parses OK", rc == 0);
+    check("1 dep", gf.n_deps == 1);
+    check("dep[0] = railties", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "railties") == 0);
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: install_if -> { ... } do ... end ─────────────────────── */
+
+static const char INSTALL_IF_BLOCK[] =
+    "source \"https://rubygems.org\"\n"
+    "install_if -> { RUBY_PLATFORM =~ /darwin/ } do\n"
+    "  gem \"mac-only\"\n"
+    "end\n"
+    "gem \"universal\"\n";
+
+static void test_install_if(void)
+{
+    printf("test_install_if:\n");
+    struct wow_gemfile gf;
+    int rc = parse(INSTALL_IF_BLOCK, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    check("dep[0] = mac-only", gf.n_deps > 0 &&
+          strcmp(gf.deps[0].name, "mac-only") == 0);
+    check("dep[1] = universal", gf.n_deps > 1 &&
+          strcmp(gf.deps[1].name, "universal") == 0);
+    wow_gemfile_free(&gf);
+}
+
 /* ── Main ───────────────────────────────────────────────────────── */
 
 int main(void)
@@ -1389,6 +1567,16 @@ int main(void)
     test_block_comment();
     test_groups_plural();
     test_nested_blocks();
+
+    /* Lexer/parser improvement tests (5 fix patterns) */
+    test_group_optional();
+    test_group_multi_kw();
+    test_array_constraints();
+    test_paren_gem();
+    test_path_block();
+    test_git_block();
+    test_github_block();
+    test_install_if();
 
     /* Evaluator tests (Phase 5b) */
     test_eval_if_true();

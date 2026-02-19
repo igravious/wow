@@ -174,6 +174,85 @@ static void skip_block_comment(struct wow_lexer *lex)
     lex->cursor = p;
 }
 
+/*
+ * skip_to_do -- consume everything until the `do` keyword.
+ *
+ * Called after the lexer has matched "install_if". Advances the cursor
+ * past all tokens (lambda, braces, strings, etc.) until it finds a
+ * word-boundary `do`. Stops just before `do` so the normal lexer
+ * emits DO as the next token.
+ */
+static void skip_to_do(struct wow_lexer *lex)
+{
+    const char *p = lex->cursor;
+    const char *lim = lex->limit;
+
+    while (p < lim) {
+        /* Skip whitespace */
+        if (*p == ' ' || *p == '\t' || *p == '\r') {
+            p++;
+            continue;
+        }
+        if (*p == '\n') {
+            lex->line++;
+            p++;
+            continue;
+        }
+        /* Skip comments */
+        if (*p == '#') {
+            while (p < lim && *p != '\n' && *p != '\0')
+                p++;
+            continue;
+        }
+        /* Skip strings */
+        if (*p == '"' || *p == '\'') {
+            char q = *p++;
+            while (p < lim && *p != q && *p != '\n')
+                p++;
+            if (p < lim && *p == q) p++;
+            continue;
+        }
+        /* Skip brace blocks { ... } */
+        if (*p == '{') {
+            int depth = 1;
+            p++;
+            while (p < lim && depth > 0) {
+                if (*p == '"' || *p == '\'') {
+                    char q = *p++;
+                    while (p < lim && *p != q && *p != '\n')
+                        p++;
+                    if (p < lim && *p == q) p++;
+                    continue;
+                }
+                if (*p == '#') {
+                    while (p < lim && *p != '\n' && *p != '\0')
+                        p++;
+                    continue;
+                }
+                if (*p == '{') depth++;
+                else if (*p == '}') depth--;
+                else if (*p == '\n') lex->line++;
+                p++;
+            }
+            continue;
+        }
+        /* Check for 'do' keyword at word boundary */
+        if (*p == 'd' && p + 1 < lim && p[1] == 'o' &&
+            (p + 2 >= lim || p[2] == ' ' || p[2] == '\n' ||
+             p[2] == '\t' || p[2] == '\r' || p[2] == '\0')) {
+            /* Verify word boundary before 'do' */
+            if (p == lex->start || *(p - 1) == ' ' || *(p - 1) == '\t' ||
+                *(p - 1) == '\n' || *(p - 1) == '}') {
+                /* Stop before 'do' — let the normal lexer emit DO */
+                break;
+            }
+        }
+        p++;
+    }
+
+    lex->cursor = p;
+}
+
 /* ------------------------------------------------------------------ */
 /* Scanner                                                             */
 /* ------------------------------------------------------------------ */
@@ -231,6 +310,16 @@ int wow_lexer_scan(struct wow_lexer *lex, struct wow_token *token)
             "plugin"    { token->length = 6;  return PLUGIN; }
             "platforms" { token->length = 9;  return PLATFORMS; }
             "platform"  { token->length = 8;  return PLATFORMS; }
+            "path"      { token->length = 4;  return PATH; }
+            "git"       { token->length = 3;  return GIT; }
+            "github"    { token->length = 6;  return GITHUB; }
+
+            /* install_if — skip lambda/condition, let parser handle do...end */
+            "install_if"  {
+                skip_to_do(lex);
+                token->length = (int)(lex->cursor - lex->tok);
+                return INSTALL_IF;
+            }
 
             /* git_source -- consume entire declaration including block body */
             "git_source"  {

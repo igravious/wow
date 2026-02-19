@@ -81,10 +81,14 @@ static void gem_opts_acc_free(struct gem_opts_acc *a)
 /* Non-terminal types */
 %type gem_opts { struct gem_opts_acc }
 %type ruby_opts { struct gem_opts_acc }
+%type string_array { struct gem_opts_acc }
+%type string_array_items { struct gem_opts_acc }
 
 /* Destructors to prevent leaks on parse error */
 %destructor gem_opts { gem_opts_acc_free(&$$); }
 %destructor ruby_opts { gem_opts_acc_free(&$$); }
+%destructor string_array { gem_opts_acc_free(&$$); }
+%destructor string_array_items { gem_opts_acc_free(&$$); }
 
 /* Token declarations -- these define the IDs exported in parser.h */
 %token SOURCE GEM GROUP DO END RUBY GEMSPEC .
@@ -93,6 +97,7 @@ static void gem_opts_acc_free(struct gem_opts_acc *a)
 %token COMMA HASHROCKET NEWLINE .
 %token IDENT UNSUPPORTED ERROR .
 %token GIT_SOURCE PLUGIN PLATFORMS .
+%token PATH GIT GITHUB INSTALL_IF .
 %token LBRACKET RBRACKET LPAREN RPAREN .
 %token PERCENT_ARRAY .
 
@@ -131,6 +136,10 @@ stmt ::= ruby_stmt .
 stmt ::= gemspec_stmt .
 stmt ::= platforms_stmt .
 stmt ::= plugin_stmt .
+stmt ::= path_stmt .
+stmt ::= git_stmt .
+stmt ::= github_stmt .
+stmt ::= install_if_stmt .
 stmt ::= GIT_SOURCE .
 stmt ::= NEWLINE .
 
@@ -192,6 +201,28 @@ gem_stmt ::= GEM STRING(N) gem_opts(O) . {
     }
 
     /* Prevent gem_opts destructor from freeing transferred pointers */
+    O.constraints = NULL;
+    O.n_constraints = 0;
+    O.group = NULL;
+
+    wow_gemfile_add_dep(gf, &dep);
+}
+
+/* Parenthesised: gem("name", "~> 1.0", require: false) */
+gem_stmt ::= GEM LPAREN STRING(N) gem_opts(O) RPAREN . {
+    struct wow_gemfile_dep dep;
+    memset(&dep, 0, sizeof(dep));
+    dep.name          = tok_strdup(N, 1, 1);
+    dep.constraints   = O.constraints;
+    dep.n_constraints = O.n_constraints;
+    dep.require       = O.require;
+
+    if (O.group) {
+        dep.group = O.group;
+    } else if (gf->_current_group) {
+        dep.group = strdup(gf->_current_group);
+    }
+
     O.constraints = NULL;
     O.n_constraints = 0;
     O.group = NULL;
@@ -305,6 +336,37 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL HASHROCKET array . {
     /* Hashrocket key with array value -- accept but ignore */
 }
 
+/* Bare array as positional constraint: gem 'x', ['>= 1', '< 2'] */
+gem_opts(R) ::= gem_opts(L) COMMA string_array(A) . {
+    R = L;
+    memset(&L, 0, sizeof(L));
+    for (int i = 0; i < A.n_constraints; i++)
+        gem_opts_acc_add_constraint(&R, A.constraints[i]);
+    free(A.constraints);  /* strings transferred, free container only */
+    A.constraints = NULL;
+    A.n_constraints = 0;
+}
+
+/* ------------------------------------------------------------------ */
+/* String array literal: ['str', 'str']                                */
+/* ------------------------------------------------------------------ */
+
+string_array(R) ::= LBRACKET string_array_items(A) RBRACKET . {
+    R = A;
+    memset(&A, 0, sizeof(A));
+}
+
+string_array_items(R) ::= STRING(S) . {
+    gem_opts_acc_init(&R);
+    gem_opts_acc_add_constraint(&R, tok_strdup(S, 1, 1));
+}
+
+string_array_items(R) ::= string_array_items(L) COMMA STRING(S) . {
+    R = L;
+    memset(&L, 0, sizeof(L));
+    gem_opts_acc_add_constraint(&R, tok_strdup(S, 1, 1));
+}
+
 /* ------------------------------------------------------------------ */
 /* Array literals: [:sym, :sym] and %i[sym sym]                        */
 /* ------------------------------------------------------------------ */
@@ -355,6 +417,12 @@ name_list ::= name_list COMMA STRING . {
     /* Keep the first name, ignore subsequent ones */
 }
 
+/* Keyword args in group call: group :dev, optional: true */
+name_list ::= name_list COMMA KEY LIT_TRUE .
+name_list ::= name_list COMMA KEY LIT_FALSE .
+name_list ::= name_list COMMA KEY STRING .
+name_list ::= name_list COMMA KEY SYMBOL .
+
 /* ------------------------------------------------------------------ */
 /* platforms :ruby do ... end                                          */
 /* platform :jruby do ... end                                          */
@@ -368,6 +436,29 @@ platforms_stmt ::= platforms_open stmts END . {
 
 platform_names ::= SYMBOL .
 platform_names ::= platform_names COMMA SYMBOL .
+
+/* ------------------------------------------------------------------ */
+/* path "." do ... end                                                 */
+/* git "url" do ... end                                                */
+/* github "org/repo" do ... end                                        */
+/* ------------------------------------------------------------------ */
+
+/* Shared keyword opts consumed and ignored for block constructs */
+block_kw_opts ::= .
+block_kw_opts ::= block_kw_opts COMMA KEY STRING .
+block_kw_opts ::= block_kw_opts COMMA KEY SYMBOL .
+block_kw_opts ::= block_kw_opts COMMA KEY LIT_TRUE .
+block_kw_opts ::= block_kw_opts COMMA KEY LIT_FALSE .
+
+path_stmt ::= PATH STRING block_kw_opts DO stmts END .
+git_stmt ::= GIT STRING block_kw_opts DO stmts END .
+github_stmt ::= GITHUB STRING block_kw_opts DO stmts END .
+
+/* ------------------------------------------------------------------ */
+/* install_if -> { ... } do ... end                                    */
+/* ------------------------------------------------------------------ */
+
+install_if_stmt ::= INSTALL_IF DO stmts END .
 
 /* ------------------------------------------------------------------ */
 /* ruby "3.3.0", engine: "jruby" -- version stored, opts ignored       */
