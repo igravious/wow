@@ -241,6 +241,10 @@ int wow_gemfile_parse_buf(const char *buf, int len, struct wow_gemfile *gf)
         return -1;
     }
 
+    /* No source declared — match Bundler's default */
+    if (rc == 0 && !gf->source)
+        gf->source = strdup("locally installed gems");
+
     return rc;
 }
 
@@ -326,6 +330,10 @@ int wow_gemfile_parse_file(const char *path, struct wow_gemfile *gf)
         wow_gemfile_free(gf);
         rc = -1;
     }
+
+    /* No source declared — match Bundler's default */
+    if (rc == 0 && !gf->source)
+        gf->source = strdup("locally installed gems");
 
     free(buf);
     return rc;

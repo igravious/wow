@@ -314,7 +314,8 @@ static void test_empty(void)
     int rc1 = parse(EMPTY, &gf);
     check("empty parses OK", rc1 == 0);
     check("empty: 0 deps", gf.n_deps == 0);
-    check("empty: no source", gf.source == NULL);
+    check("empty: default source", gf.source != NULL &&
+          strcmp(gf.source, "locally installed gems") == 0);
     wow_gemfile_free(&gf);
 
     int rc2 = parse(ONLY_COMMENTS, &gf);

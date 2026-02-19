@@ -1192,8 +1192,17 @@ static void process_line(struct wow_eval_ctx *ctx)
                                     resolved, sub.error_msg);
                             }
 
+                            /* Transfer sub allocs to parent (tokens
+                             * may point into these strings) */
+                            for (int ai = 0; ai < sub.n_allocs; ai++)
+                                eval_alloc(ctx, sub.allocs[ai]);
+                            sub.n_allocs = 0;
+
+                            /* Keep buf alive — emitted tokens point
+                             * into it; parent's alloc pool frees it */
+                            eval_alloc(ctx, buf);
+
                             wow_eval_free(&sub);
-                            free(buf);
                         }
                     }
                     fclose(f);
