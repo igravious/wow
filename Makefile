@@ -217,7 +217,18 @@ corpus-report:
 clean:
 	rm -rf $(BUILDDIR)
 
+# fresh: remove wow's own build artefacts but preserve 3rd-party libraries
+# (libtls.a, libyaml.a, assets.zip) to avoid recompiling cosmo sources
+fresh:
+	@echo "Removing wow build artefacts (preserving 3rd-party libs)..."
+	rm -f $(OBJS) $(OBJS:.o=.d)
+	rm -f $(TEST_BINS) $(TEST_BINS:.com=.com.dbg)
+	rm -f $(BUILDDIR)/wow.com $(BUILDDIR)/wow.com.dbg
+	rm -f $(patsubst $(BUILDDIR)/%, $(BUILDDIR)/.aarch64/%, $(OBJS))
+	rm -f $(patsubst $(BUILDDIR)/%, $(BUILDDIR)/.aarch64/%, $(OBJS:.o=.d))
+	@echo "Preserved: libtls.a, libyaml.a, assets.zip"
+
 distclean: clean
 	rm -f config.mk
 
-.PHONY: clean distclean test test-tls test-registry test-ruby-mgr test-gem test-gemfile generate-gemfile-parser
+.PHONY: clean fresh distclean test test-tls test-registry test-ruby-mgr test-gem test-gemfile generate-gemfile-parser

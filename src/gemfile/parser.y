@@ -255,10 +255,11 @@ gem_stmt ::= GEM STRING(N) gem_opts(O) . {
     if (O.n_groups > 0) {
         dep.groups = O.groups;
         dep.n_groups = O.n_groups;
-    } else if (gf->_current_group) {
-        dep.groups = malloc(sizeof(char *));
-        dep.groups[0] = strdup(gf->_current_group);
-        dep.n_groups = 1;
+    } else if (gf->_n_current_groups > 0) {
+        dep.groups = malloc(sizeof(char *) * (size_t)gf->_n_current_groups);
+        for (int i = 0; i < gf->_n_current_groups; i++)
+            dep.groups[i] = strdup(gf->_current_groups[i]);
+        dep.n_groups = gf->_n_current_groups;
     } else {
         dep.groups = malloc(sizeof(char *));
         dep.groups[0] = strdup("default");
@@ -302,10 +303,11 @@ gem_stmt ::= GEM LPAREN STRING(N) gem_opts(O) RPAREN . {
     if (O.n_groups > 0) {
         dep.groups = O.groups;
         dep.n_groups = O.n_groups;
-    } else if (gf->_current_group) {
-        dep.groups = malloc(sizeof(char *));
-        dep.groups[0] = strdup(gf->_current_group);
-        dep.n_groups = 1;
+    } else if (gf->_n_current_groups > 0) {
+        dep.groups = malloc(sizeof(char *) * (size_t)gf->_n_current_groups);
+        for (int i = 0; i < gf->_n_current_groups; i++)
+            dep.groups[i] = strdup(gf->_current_groups[i]);
+        dep.n_groups = gf->_n_current_groups;
     } else {
         dep.groups = malloc(sizeof(char *));
         dep.groups[0] = strdup("default");
@@ -385,7 +387,10 @@ gem_opts(R) ::= gem_opts(L) COMMA KEY(K) SYMBOL(S) . {
     char *key = tok_strdup(K, 0, 1);  /* strip trailing colon */
     if (strcmp(key, "group") == 0 || strcmp(key, "groups") == 0) {
         gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
-                                tok_strdup(S, 1, 0));  /* strip leading colon */
+                                tok_strdup(S, 1, 0));
+    } else if (strcmp(key, "platform") == 0 || strcmp(key, "platforms") == 0) {
+        gem_opts_acc_add_string(&R.platforms, &R.n_platforms, &R.platforms_cap,
+                                tok_strdup(S, 1, 0));
     }
     free(key);
 }
@@ -471,6 +476,9 @@ gem_opts(R) ::= gem_opts(L) COMMA SYMBOL(S) HASHROCKET SYMBOL(V) . {
     char *key = tok_strdup(S, 1, 0);
     if (strcmp(key, "group") == 0 || strcmp(key, "groups") == 0) {
         gem_opts_acc_add_string(&R.groups, &R.n_groups, &R.groups_cap,
+                                tok_strdup(V, 1, 0));
+    } else if (strcmp(key, "platform") == 0 || strcmp(key, "platforms") == 0) {
+        gem_opts_acc_add_string(&R.platforms, &R.n_platforms, &R.platforms_cap,
                                 tok_strdup(V, 1, 0));
     }
     free(key);
@@ -600,34 +608,51 @@ typed_array_items(R) ::= typed_array_items(L) COMMA STRING(S) . {
 /* ------------------------------------------------------------------ */
 
 group_open ::= GROUP name_list DO . {
-    /* _current_group was set by name_list reduction */
+    /* _current_groups was set by name_list reduction */
 }
 
 group_open ::= GROUP LPAREN name_list RPAREN DO . {
-    /* _current_group was set by name_list reduction */
+    /* _current_groups was set by name_list reduction */
 }
 
 group_stmt ::= group_open stmts END . {
-    free(gf->_current_group);
-    gf->_current_group = NULL;
+    for (int i = 0; i < gf->_n_current_groups; i++)
+        free(gf->_current_groups[i]);
+    free(gf->_current_groups);
+    gf->_current_groups = NULL;
+    gf->_n_current_groups = 0;
 }
 
 name_list ::= SYMBOL(S) . {
-    free(gf->_current_group);
-    gf->_current_group = tok_strdup(S, 1, 0);  /* strip leading colon */
+    for (int i = 0; i < gf->_n_current_groups; i++)
+        free(gf->_current_groups[i]);
+    free(gf->_current_groups);
+    gf->_current_groups = malloc(sizeof(char *));
+    gf->_current_groups[0] = tok_strdup(S, 1, 0);
+    gf->_n_current_groups = 1;
 }
 
 name_list ::= STRING(S) . {
-    free(gf->_current_group);
-    gf->_current_group = tok_strdup(S, 1, 1);  /* strip quotes */
+    for (int i = 0; i < gf->_n_current_groups; i++)
+        free(gf->_current_groups[i]);
+    free(gf->_current_groups);
+    gf->_current_groups = malloc(sizeof(char *));
+    gf->_current_groups[0] = tok_strdup(S, 1, 1);
+    gf->_n_current_groups = 1;
 }
 
-name_list ::= name_list COMMA SYMBOL . {
-    /* Keep the first name, ignore subsequent ones */
+name_list ::= name_list COMMA SYMBOL(S) . {
+    gf->_current_groups = realloc(gf->_current_groups,
+        sizeof(char *) * (size_t)(gf->_n_current_groups + 1));
+    gf->_current_groups[gf->_n_current_groups] = tok_strdup(S, 1, 0);
+    gf->_n_current_groups++;
 }
 
-name_list ::= name_list COMMA STRING . {
-    /* Keep the first name, ignore subsequent ones */
+name_list ::= name_list COMMA STRING(S) . {
+    gf->_current_groups = realloc(gf->_current_groups,
+        sizeof(char *) * (size_t)(gf->_n_current_groups + 1));
+    gf->_current_groups[gf->_n_current_groups] = tok_strdup(S, 1, 1);
+    gf->_n_current_groups++;
 }
 
 /* Keyword args in group call: group :dev, optional: true */

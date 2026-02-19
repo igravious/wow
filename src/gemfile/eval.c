@@ -963,7 +963,7 @@ static void process_line(struct wow_eval_ctx *ctx)
             /* Strip trailing NEWLINE from expression range */
             while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
             struct wow_eval_val cond = eval_expr(ctx, &pos, end);
-            if (cond.type == VAL_UNEVALUATABLE) {
+            if (cond.type == VAL_UNEVALUATABLE || pos < end) {
                 eval_error(ctx, first_line,
                     "unevaluatable condition in %s",
                     first_id == IF ? "if" : "unless");
@@ -992,7 +992,7 @@ static void process_line(struct wow_eval_ctx *ctx)
             int end = ctx->line_len;
             while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
             struct wow_eval_val cond = eval_expr(ctx, &pos, end);
-            if (cond.type == VAL_UNEVALUATABLE) {
+            if (cond.type == VAL_UNEVALUATABLE || pos < end) {
                 eval_error(ctx, first_line,
                     "unevaluatable condition in elsif");
                 ctx->line_len = 0;
@@ -1067,7 +1067,7 @@ static void process_line(struct wow_eval_ctx *ctx)
         while (cond_end > cond_start &&
                ctx->line[cond_end - 1].id == NEWLINE) cond_end--;
         struct wow_eval_val cond = eval_expr(ctx, &cond_start, cond_end);
-        if (cond.type == VAL_UNEVALUATABLE) {
+        if (cond.type == VAL_UNEVALUATABLE || cond_start < cond_end) {
             eval_error(ctx, ctx->line[trail_pos].tok.line,
                 "unevaluatable condition in trailing %s",
                 ctx->line[trail_pos].id == IF ? "if" : "unless");
@@ -1091,7 +1091,7 @@ static void process_line(struct wow_eval_ctx *ctx)
         int end = ctx->line_len;
         while (end > pos && ctx->line[end - 1].id == NEWLINE) end--;
         struct wow_eval_val val = eval_expr(ctx, &pos, end);
-        if (val.type == VAL_UNEVALUATABLE) {
+        if (val.type == VAL_UNEVALUATABLE || pos < end) {
             eval_error(ctx, ctx->line[0].tok.line,
                 "unevaluatable expression in assignment to '%s'", name);
             free(name);

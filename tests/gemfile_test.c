@@ -338,10 +338,14 @@ static void test_multi_group(void)
     int rc = parse(MULTI_GROUP, &gf);
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
-    /* First symbol is kept */
-    check("group=development",
-          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+    check("2 groups",
+          gf.n_deps > 0 && gf.deps[0].n_groups == 2);
+    check("group[0]=development",
+          gf.n_deps > 0 && gf.deps[0].n_groups >= 2 &&
           strcmp(gf.deps[0].groups[0], "development") == 0);
+    check("group[1]=test",
+          gf.n_deps > 0 && gf.deps[0].n_groups >= 2 &&
+          strcmp(gf.deps[0].groups[1], "test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -691,6 +695,16 @@ static void test_percent_array(void)
     int rc = parse(PERCENT_ARRAY_SRC, &gf);
     check("parses OK", rc == 0);
     check("2 deps", gf.n_deps == 2);
+    if (gf.n_deps >= 2) {
+        check("debug 2 platforms", gf.deps[0].n_platforms == 2);
+        if (gf.deps[0].n_platforms >= 2) {
+            check("debug platform[0]=mri",
+                  strcmp(gf.deps[0].platforms[0], "mri") == 0);
+            check("debug platform[1]=windows",
+                  strcmp(gf.deps[0].platforms[1], "windows") == 0);
+        }
+        check("tzinfo-data 4 platforms", gf.deps[1].n_platforms == 4);
+    }
     wow_gemfile_free(&gf);
 }
 
@@ -1390,9 +1404,14 @@ static void test_group_multi_kw(void)
     int rc = parse(GROUP_MULTI_KW, &gf);
     check("parses OK", rc == 0);
     check("1 dep", gf.n_deps == 1);
-    check("rspec group=development",
-          gf.n_deps > 0 && gf.deps[0].n_groups == 1 &&
+    check("rspec 2 groups",
+          gf.n_deps > 0 && gf.deps[0].n_groups == 2);
+    check("rspec group[0]=development",
+          gf.n_deps > 0 && gf.deps[0].n_groups >= 2 &&
           strcmp(gf.deps[0].groups[0], "development") == 0);
+    check("rspec group[1]=test",
+          gf.n_deps > 0 && gf.deps[0].n_groups >= 2 &&
+          strcmp(gf.deps[0].groups[1], "test") == 0);
     wow_gemfile_free(&gf);
 }
 
@@ -1604,6 +1623,73 @@ static void test_array_require(void)
     wow_gemfile_free(&gf);
 }
 
+/* ── Test: group :development, :test do (multi-group block) ──────── */
+
+static const char MULTI_GROUP_BLOCK[] =
+    "source \"https://rubygems.org\"\n"
+    "group :development, :test do\n"
+    "  gem \"rspec\"\n"
+    "  gem \"pry\"\n"
+    "end\n"
+    "group :development, :lint do\n"
+    "  gem \"rubocop\"\n"
+    "end\n";
+
+static void test_multi_group_block(void)
+{
+    printf("test_multi_group_block:\n");
+    struct wow_gemfile gf;
+    int rc = parse(MULTI_GROUP_BLOCK, &gf);
+    check("parses OK", rc == 0);
+    check("3 deps", gf.n_deps == 3);
+    if (gf.n_deps >= 3) {
+        check("rspec 2 groups", gf.deps[0].n_groups == 2);
+        if (gf.deps[0].n_groups >= 2) {
+            check("rspec group[0]=development",
+                  strcmp(gf.deps[0].groups[0], "development") == 0);
+            check("rspec group[1]=test",
+                  strcmp(gf.deps[0].groups[1], "test") == 0);
+        }
+        check("rubocop 2 groups", gf.deps[2].n_groups == 2);
+        if (gf.deps[2].n_groups >= 2) {
+            check("rubocop group[0]=development",
+                  strcmp(gf.deps[2].groups[0], "development") == 0);
+            check("rubocop group[1]=lint",
+                  strcmp(gf.deps[2].groups[1], "lint") == 0);
+        }
+    }
+    wow_gemfile_free(&gf);
+}
+
+/* ── Test: platforms: :jruby (single symbol keyword) ────────────── */
+
+static const char PLATFORM_SINGLE[] =
+    "source \"https://rubygems.org\"\n"
+    "gem \"jruby-openssl\", platforms: :jruby\n"
+    "gem \"pg\", :platform => :mri\n";
+
+static void test_platform_single(void)
+{
+    printf("test_platform_single:\n");
+    struct wow_gemfile gf;
+    int rc = parse(PLATFORM_SINGLE, &gf);
+    check("parses OK", rc == 0);
+    check("2 deps", gf.n_deps == 2);
+    if (gf.n_deps >= 2) {
+        check("jruby-openssl 1 platform", gf.deps[0].n_platforms == 1);
+        if (gf.deps[0].n_platforms >= 1) {
+            check("jruby-openssl platform=jruby",
+                  strcmp(gf.deps[0].platforms[0], "jruby") == 0);
+        }
+        check("pg 1 platform", gf.deps[1].n_platforms == 1);
+        if (gf.deps[1].n_platforms >= 1) {
+            check("pg platform=mri",
+                  strcmp(gf.deps[1].platforms[0], "mri") == 0);
+        }
+    }
+    wow_gemfile_free(&gf);
+}
+
 /* ── Test: gem "x", some_var (variable as version arg) ──────────── */
 
 static const char VAR_VERSION[] =
@@ -1698,6 +1784,8 @@ int main(void)
     test_array_groups();
     test_array_platforms();
     test_array_require();
+    test_multi_group_block();
+    test_platform_single();
 
     /* Evaluator tests (Phase 5b) */
     test_eval_if_true();

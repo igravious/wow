@@ -36,7 +36,8 @@ struct wow_gemfile {
     size_t n_deps;
     /* internal */
     size_t  _deps_cap;
-    char   *_current_group;          /* set during group do...end parsing   */
+    char  **_current_groups;         /* set during group do...end parsing   */
+    int     _n_current_groups;
     char  **_current_platforms;      /* set during platforms do...end       */
     int     _n_current_platforms;
 };
