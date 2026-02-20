@@ -57,7 +57,7 @@ If PATH changed between cloak/decloak, positions are clamped to valid range.
 | `wow ruby` | No | Run wow-managed Ruby explicitly |
 | `wow gem` | No | Run gem command with wow-managed Ruby |
 | `wow bundle` / `wow sync` | **Yes** | Resolve, download, install gems to vendor/ |
-| `wow exec <cmd>` | **Yes** | Run command from vendor/bundle/rubies/X.Y.Z/bin/ |
+| `wow exec <cmd>` | **Yes** | Run command from vendor/bundle/ruby/X.Y.0/gems/ |
 | `wow run <cmd>` | Alias for exec? | (TBD: naming) |
 | `wow decloak` | N/A | Activate shims on PATH |
 | `wow cloak` | N/A | Deactivate shims, restore rbenv |
@@ -195,7 +195,7 @@ Or install the gem with: wow gem install thor
 ### Default: Project-local (Bundler-style)
 
 ```bash
-wow sync    # Installs to vendor/bundle/rubies/X.Y.Z/
+wow sync    # Installs to vendor/bundle/ruby/X.Y.0/
 ```
 
 ### User-local (Optional)
@@ -404,5 +404,5 @@ wowx rubocop
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 *Status: Draft for discussion*
