@@ -34,7 +34,7 @@ wow cloak      # Deactivate: restore rbenv to its original position, remove wow 
 ### State Persistence
 
 ```json
-~/.config/wow/state.json
+~/.config/wow/state.json (XDG_CONFIG_HOME)
 {
   "replaced_rbenv": true,
   "rbenv_shims_path": "~/.rbenv/shims",
@@ -96,7 +96,7 @@ These stubs:
 Unlike wow's current static list, shims are discovered:
 
 1. **On `wow install <ruby-version>`**: Scan `~/.local/share/wow/rubies/ruby-X.Y.Z-*/bin/`
-2. **On `wow sync`**: Scan `vendor/bundle/rubies/X.Y.Z/bin/`
+2. **On `wow sync`**: Scan `vendor/bundle/ruby/X.Y.0/gems/` (Bundler convention)
 3. **Create/update** shims in `~/.local/share/wow/shims/`
 
 ### Two Shim Templates (For Speed)
@@ -112,12 +112,16 @@ Unlike wow's current static list, shims are discovered:
 cosmocc -o shim_native.com shim_native.c
 cosmocc -o shim_script.com shim_script.c
 
-# Copy and rename for each discovered binary
-cp shim_native.com ~/.local/share/wow/shims/ruby
-cp shim_native.com ~/.local/share/wow/shims/nokogiri    # native extension
-cp shim_script.com ~/.local/share/wow/shims/thor
-cp shim_script.com ~/.local/share/wow/shims/rails
-cp shim_script.com ~/.local/share/wow/shims/bundle
+# Linux/macOS: Use hardlinks (zero disk overhead)
+ln shim_native.com ~/.local/share/wow/shims/ruby
+ln shim_native.com ~/.local/share/wow/shims/nokogiri    # native extension
+ln shim_script.com ~/.local/share/wow/shims/thor
+ln shim_script.com ~/.local/share/wow/shims/rails
+ln shim_script.com ~/.local/share/wow/shims/bundle
+
+# Windows: Copy (APE binaries work natively, no symlinks needed)
+cp shim_native.com %LOCALAPPDATA%\wow\shims\ruby.exe
+# ... etc
 ```
 
 **Why two binaries?** Minimal runtime branching for speed. The shim is invoked on every Ruby command—microseconds matter.
@@ -305,11 +309,11 @@ wow cloak        # Restore rbenv
    - Or: `exec(wow_ruby_path, script.rb, argv)`?
    - *Deferred: cross this bridge when we come to it*
 
-5. **Windows**: How do shims work on Windows without symlinks/hardlinks?
-   - Option: `.exe` wrappers that call wow
-   - Option: Batch files
-   - Option: Skip shims on Windows, use `wow` command only
-   - *Deferred: cross this bridge when we come to it*
+5. **PATH manipulation libraries**: Shell-specific PATH handling (bash, zsh, fish) is a solved problem. Research existing libraries before implementing cloak/decloak.
+   - Fish uses `fish_user_paths` not `$PATH`
+   - tmux/screen inherit PATH at creation
+   - User may modify shell config between cloak/decloak
+   - *Research: env-paths, directories crate, xdg-base-dirs*
 
 ## Resolved Decisions
 
@@ -338,19 +342,27 @@ wowx rubocop
 
 | Command | Cache? | Location | Notes |
 |---------|--------|----------|-------|
-| `wow sync` | **NO** | `vendor/bundle/rubies/X.Y.Z/` | Direct install, no cache layer |
-| `wowx` | **YES** | `~/.local/share/wow/ephemeral_gem_cache/` | TTL cleanup needed |
+| `wow sync` | **YES** | `~/.cache/wow/gems/` | XDG_CACHE_HOME — saves re-downloading |
+| `wowx` | **YES** | `~/.cache/wow/gems/` | Shared cache, TTL cleanup needed |
 
-**Rationale:** wow sync is designed to be lightning fast (parallel downloads). Adding a cache layer adds complexity for minimal gain. wowx needs caching because the same ephemeral tool may be requested multiple times.
+**Rationale:** Both use XDG cache directory. wow sync benefits when re-syncing or across projects. wowx benefits when same ephemeral tool requested multiple times.
 
-**Directory structure:**
+**Directory structure (XDG compliant):**
 ```
+~/.cache/wow/
+└── gems/                      # Downloaded .gem files
+    └── nokogiri-1.16.0.gem
+
 ~/.local/share/wow/
-├── rubies/                    # Ruby installations (was: rubies/)
-├── shims/                     # Dynamic shims
-└── ephemeral_gem_cache/       # wowx tools only
-    └── rubocop-1.50.0/
-        └── ...
+├── rubies/                    # Ruby installations (XDG_DATA_HOME)
+└── shims/                     # Dynamic shims
+
+~/.config/wow/
+└── state.json                 # decloak/cloak state (XDG_CONFIG_HOME)
+
+# System-wide (if installed by admin)
+/usr/share/wow/
+└── rubies/                    # System Ruby installations
 ```
 
 ---
