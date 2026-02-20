@@ -68,10 +68,11 @@ If PATH changed between cloak/decloak, positions are clamped to valid range.
 
 | Command | Project-aware? | Description |
 |---------|---------------|-------------|
-| `wowx <gem-binary>` | **No** | Run standalone tool (user gems → ephemeral) |
-| `wowx <script.rb>` | **No** | Run Ruby script with correct shebang |
+| `wowx <gem-binary>` | **No** | Run standalone tool (user gems → cache → download) |
 
-**Critical:** `wowx` NEVER looks at Gemfile, vendor/, or bin/. It is for standalone tools only.
+**Critical:** `wowx` NEVER looks at Gemfile, vendor/, or bin/. It is for standalone gem binaries only — not scripts.
+
+**Shebang handling:** Users are responsible for their script shebangs. `#!/usr/bin/env ruby` works if `ruby` resolves correctly. Hardcoded paths like `#!/opt/rubies/3.2.0/bin/ruby` are the user's responsibility.
 
 ### Generated bin/ (project-local)
 
@@ -304,7 +305,7 @@ wow cloak        # Restore rbenv
 
 ## Open Questions (Deferred)
 
-4. **Shebang rewriting for wowx**: How does `wowx script.rb` ensure correct Ruby?
+3. **Shebang rewriting**: How does `wowx script.rb` ensure correct Ruby?
    - Parse shebang, replace with wow's Ruby path?
    - Or: `exec(wow_ruby_path, script.rb, argv)`?
    - *Deferred: cross this bridge when we come to it*
@@ -328,7 +329,15 @@ No collision because:
 - Different use cases (project tool vs standalone tool)
 - wowx explicitly does NOT look at project `bin/` or `vendor/`
 
-### 2. wowx Ruby Version
+### 2. wowx Gem Lookup
+
+**Lookup order:**
+1. User-installed gems (`~/.gem/ruby/X.Y.0/bin/`) — respect user's explicitly installed tools
+2. Cache (`~/.cache/wow/gems/`) — previously downloaded ephemeral tools
+
+If not found: download to cache, then run.
+
+### 3. wowx Ruby Version
 
 **Rule:** Use the latest wow-installed Ruby. If none installed, prompt to install.
 
@@ -338,12 +347,12 @@ wowx rubocop
 # if no Ruby installed: "No Ruby installed. Install latest (4.0.1)? [Y/n]"
 ```
 
-### 3. Gem Caching
+### 4. Gem Caching
 
 | Command | Cache? | Location | Notes |
 |---------|--------|----------|-------|
 | `wow sync` | **YES** | `~/.cache/wow/gems/` | XDG_CACHE_HOME — saves re-downloading |
-| `wowx` | **YES** | `~/.cache/wow/gems/` | Shared cache, TTL cleanup needed |
+| `wowx` | **YES** | `~/.cache/wow/gems/` | Ephemeral tools cached after first download |
 
 **Rationale:** Both use XDG cache directory. wow sync benefits when re-syncing or across projects. wowx benefits when same ephemeral tool requested multiple times.
 
