@@ -12,6 +12,8 @@
 #include <unistd.h>
 
 #include "wow/download/progress.h"
+#include "wow/util/fmt.h"
+#include "wow/util/buf.h"
 
 #define WOW_ANSI_BOLD      "\033[1m"
 #define WOW_ANSI_DIM       "\033[2m"
@@ -27,39 +29,6 @@ static double progress_now(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
 }
-
-/* Format bytes as human-readable string (B, KiB, MiB, GiB) */
-static void format_bytes(size_t bytes, char *buf, size_t bufsz)
-{
-    if (bytes >= 1024ULL * 1024 * 1024)
-        snprintf(buf, bufsz, "%.1fGiB",
-                 (double)bytes / (1024.0 * 1024.0 * 1024.0));
-    else if (bytes >= 1024 * 1024)
-        snprintf(buf, bufsz, "%.1fMiB",
-                 (double)bytes / (1024.0 * 1024.0));
-    else if (bytes >= 1024)
-        snprintf(buf, bufsz, "%.1fKiB", (double)bytes / 1024.0);
-    else
-        snprintf(buf, bufsz, "%zuB", bytes);
-}
-
-/*
- * Append n copies of character c to buf at *pos, respecting bufsz.
- */
-static void buf_fill(char *buf, size_t bufsz, int *pos, char c, int n)
-{
-    for (int i = 0; i < n && (size_t)*pos < bufsz - 1; i++)
-        buf[(*pos)++] = c;
-}
-
-/*
- * snprintf into buf at *pos, advancing *pos.
- */
-#define BUF_APPEND(buf, bufsz, pos, ...) \
-    do { \
-        int _n = snprintf((buf) + *(pos), (bufsz) - *(pos), __VA_ARGS__); \
-        if (_n > 0) *(pos) += _n; \
-    } while (0)
 
 void wow_progress_init(wow_progress_state_t *state, const char *name,
                        size_t total, void *user_ctx)
@@ -82,7 +51,7 @@ size_t wow_progress_update(wow_progress_state_t *state, size_t bytes)
     if (!state->is_tty) {
         if (!state->announced && state->total > 1024 * 1024) {
             char total_str[16];
-            format_bytes(state->total, total_str, sizeof(total_str));
+            wow_fmt_bytes(state->total, total_str, sizeof(total_str));
             fprintf(stderr, "Downloading %s (%s)...\n",
                     state->name, total_str);
             state->announced = 1;
@@ -101,40 +70,40 @@ size_t wow_progress_update(wow_progress_state_t *state, size_t bytes)
     int pos = 0;
 
     /* Clear line */
-    BUF_APPEND(line, sizeof(line), &pos, "\r\033[K");
+    WOW_BUF_APPEND(line, sizeof(line), pos, "\r\033[K");
 
     if (state->total > 0) {
         char cur_str[16], tot_str[16];
-        format_bytes(state->current, cur_str, sizeof(cur_str));
-        format_bytes(state->total, tot_str, sizeof(tot_str));
+        wow_fmt_bytes(state->current, cur_str, sizeof(cur_str));
+        wow_fmt_bytes(state->total, tot_str, sizeof(tot_str));
 
         int filled = (int)((state->current * BAR_WIDTH) / state->total);
         if (filled > BAR_WIDTH) filled = BAR_WIDTH;
         int empty = BAR_WIDTH - filled;
 
         /* Dimmed name */
-        BUF_APPEND(line, sizeof(line), &pos,
+        WOW_BUF_APPEND(line, sizeof(line), pos,
                    WOW_ANSI_DIM "%s" WOW_ANSI_RESET " ", state->name);
 
         /* Teal (cyan) filled portion */
-        BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_CYAN);
-        buf_fill(line, sizeof(line), &pos, '=', filled);
+        WOW_BUF_APPEND(line, sizeof(line), pos, WOW_ANSI_CYAN);
+        wow_buf_fill(line, sizeof(line), &pos, '=', filled);
 
         /* Dim empty portion */
         if (empty > 0) {
-            BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
-            buf_fill(line, sizeof(line), &pos, '-', empty - 1);
+            WOW_BUF_APPEND(line, sizeof(line), pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
+            wow_buf_fill(line, sizeof(line), &pos, '-', empty - 1);
         }
 
-        BUF_APPEND(line, sizeof(line), &pos, WOW_ANSI_RESET);
+        WOW_BUF_APPEND(line, sizeof(line), pos, WOW_ANSI_RESET);
 
         /* Bytes counter */
-        BUF_APPEND(line, sizeof(line), &pos, " %7s/%s", cur_str, tot_str);
+        WOW_BUF_APPEND(line, sizeof(line), pos, " %7s/%s", cur_str, tot_str);
     } else {
         /* Unknown size */
         char cur_str[16];
-        format_bytes(state->current, cur_str, sizeof(cur_str));
-        BUF_APPEND(line, sizeof(line), &pos,
+        wow_fmt_bytes(state->current, cur_str, sizeof(cur_str));
+        WOW_BUF_APPEND(line, sizeof(line), pos,
                    WOW_ANSI_DIM "%s" WOW_ANSI_RESET " %s", state->name, cur_str);
     }
 
@@ -153,16 +122,16 @@ void wow_progress_finish(wow_progress_state_t *state, const char *status)
         char line[512];
         int pos = 0;
 
-        BUF_APPEND(line, sizeof(line), &pos, "\r\033[K");
+        WOW_BUF_APPEND(line, sizeof(line), pos, "\r\033[K");
 
         if (status) {
-            BUF_APPEND(line, sizeof(line), &pos,
+            WOW_BUF_APPEND(line, sizeof(line), pos,
                        " " WOW_ANSI_BOLD WOW_ANSI_CYAN "%s" WOW_ANSI_RESET " %s\n",
                        status, state->name);
         } else {
             char tot_str[16];
-            format_bytes(state->current, tot_str, sizeof(tot_str));
-            BUF_APPEND(line, sizeof(line), &pos,
+            wow_fmt_bytes(state->current, tot_str, sizeof(tot_str));
+            WOW_BUF_APPEND(line, sizeof(line), pos,
                        " " WOW_ANSI_CYAN "\u2713" WOW_ANSI_RESET " %s (%s)\n",
                        state->name, tot_str);
         }

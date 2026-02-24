@@ -21,6 +21,8 @@
 #include <unistd.h>
 
 #include "wow/download/multibar.h"
+#include "wow/util/fmt.h"
+#include "wow/util/buf.h"
 
 #define WOW_ANSI_BOLD      "\033[1m"
 #define WOW_ANSI_DIM       "\033[2m"
@@ -40,32 +42,6 @@ static double mb_now(void)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (double)ts.tv_sec + (double)ts.tv_nsec / 1e9;
 }
-
-static void format_bytes(size_t bytes, char *buf, size_t bufsz)
-{
-    if (bytes >= 1024ULL * 1024 * 1024)
-        snprintf(buf, bufsz, "%.1fGiB",
-                 (double)bytes / (1024.0 * 1024.0 * 1024.0));
-    else if (bytes >= 1024 * 1024)
-        snprintf(buf, bufsz, "%.1fMiB",
-                 (double)bytes / (1024.0 * 1024.0));
-    else if (bytes >= 1024)
-        snprintf(buf, bufsz, "%.1fKiB", (double)bytes / 1024.0);
-    else
-        snprintf(buf, bufsz, "%zuB", bytes);
-}
-
-static void buf_fill(char *buf, size_t bufsz, int *pos, char c, int n)
-{
-    for (int i = 0; i < n && (size_t)*pos < bufsz - 1; i++)
-        buf[(*pos)++] = c;
-}
-
-#define BUF_APPEND(buf, bufsz, pos, ...) \
-    do { \
-        int _n = snprintf((buf) + *(pos), (bufsz) - *(pos), __VA_ARGS__); \
-        if (_n > 0) *(pos) += _n; \
-    } while (0)
 
 /* ── Rendering (internal, called with mutex held) ────────────────── */
 
@@ -98,19 +74,19 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
     int target_vw = nw + 1 + BAR_WIDTH + 1 + 7 + 1 + 7;
 
     /* Clear line */
-    BUF_APPEND(line, linesz, &pos, "\r\033[K");
+    WOW_BUF_APPEND(line, linesz, pos, "\r\033[K");
 
     if (!slot->name) {
         /* Empty slot (worker hasn't started yet) — visible 11 chars */
-        BUF_APPEND(line, linesz, &pos,
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "  (waiting)" WOW_ANSI_RESET);
-        buf_fill(line, linesz, &pos, ' ', target_vw - 11);
+        wow_buf_fill(line, linesz, &pos, ' ', target_vw - 11);
         return pos;
     }
 
     if (slot->finished) {
         char sz[16];
-        format_bytes(slot->current, sz, sizeof(sz));
+        wow_fmt_bytes(slot->current, sz, sizeof(sz));
         /*
          * Name at col 0, bold green ✓ in bar area,
          * (size) aligned with byte counter column at nw+32.
@@ -119,14 +95,14 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
          * pad 30 to reach nw + 32, then '(' + sz(7) + ')' = 9
          * total = nw + 41, pad 6 to reach target_vw (nw + 47)
          */
-        BUF_APPEND(line, linesz, &pos,
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_BOLD WOW_ANSI_GREEN "%-*.*s"
                    " \xe2\x9c\x93" WOW_ANSI_RESET,
                    nw, nw, slot->name);
-        buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
-        BUF_APPEND(line, linesz, &pos,
+        wow_buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "(%7s)" WOW_ANSI_RESET, sz);
-        buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 41));
+        wow_buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 41));
         return pos;
     }
 
@@ -139,53 +115,53 @@ static int render_bar(const wow_bar_slot_t *slot, char *line, size_t linesz,
          * pad 30 to reach nw + 32, then '(failed)' = 8
          * total = nw + 40, pad 7 to reach target_vw (nw + 47)
          */
-        BUF_APPEND(line, linesz, &pos,
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET
                    " " WOW_ANSI_BOLD WOW_ANSI_RED "\xe2\x9c\x97" WOW_ANSI_RESET,
                    nw, nw, slot->name);
-        buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
-        BUF_APPEND(line, linesz, &pos,
+        wow_buf_fill(line, linesz, &pos, ' ', BAR_WIDTH);  /* 30 */
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "(failed)" WOW_ANSI_RESET);
-        buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 40));
+        wow_buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 40));
         return pos;
     }
 
     if (slot->total > 0) {
         char cur_str[16], tot_str[16];
-        format_bytes(slot->current, cur_str, sizeof(cur_str));
-        format_bytes(slot->total, tot_str, sizeof(tot_str));
+        wow_fmt_bytes(slot->current, cur_str, sizeof(cur_str));
+        wow_fmt_bytes(slot->total, tot_str, sizeof(tot_str));
 
         int filled = (int)((slot->current * BAR_WIDTH) / slot->total);
         if (filled > BAR_WIDTH) filled = BAR_WIDTH;
         int empty = BAR_WIDTH - filled;
 
         /* Dimmed name, padded to nw */
-        BUF_APPEND(line, linesz, &pos,
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET " ", nw, nw, slot->name);
 
         /* Cyan filled portion */
-        BUF_APPEND(line, linesz, &pos, WOW_ANSI_CYAN);
-        buf_fill(line, linesz, &pos, '=', filled);
+        WOW_BUF_APPEND(line, linesz, pos, WOW_ANSI_CYAN);
+        wow_buf_fill(line, linesz, &pos, '=', filled);
 
         /* Dim empty portion with '>' tip */
         if (empty > 0) {
-            BUF_APPEND(line, linesz, &pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
-            buf_fill(line, linesz, &pos, '-', empty - 1);
+            WOW_BUF_APPEND(line, linesz, pos, WOW_ANSI_RESET WOW_ANSI_DIM ">");
+            wow_buf_fill(line, linesz, &pos, '-', empty - 1);
         }
 
-        BUF_APPEND(line, linesz, &pos, WOW_ANSI_RESET);
+        WOW_BUF_APPEND(line, linesz, pos, WOW_ANSI_RESET);
 
         /* Bytes: right-aligned 7 / left-aligned 7 (matches uv) */
-        BUF_APPEND(line, linesz, &pos, " %7s/%-7s", cur_str, tot_str);
+        WOW_BUF_APPEND(line, linesz, pos, " %7s/%-7s", cur_str, tot_str);
     } else {
         /* Unknown size — name + bytes so far, padded to target */
         char cur_str[16];
-        format_bytes(slot->current, cur_str, sizeof(cur_str));
+        wow_fmt_bytes(slot->current, cur_str, sizeof(cur_str));
         /* name(nw) + ' ' + cur(7) = nw + 8 */
-        BUF_APPEND(line, linesz, &pos,
+        WOW_BUF_APPEND(line, linesz, pos,
                    WOW_ANSI_DIM "%-*.*s" WOW_ANSI_RESET " %7s", nw, nw,
                    slot->name, cur_str);
-        buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 8));
+        wow_buf_fill(line, linesz, &pos, ' ', target_vw - (nw + 8));
     }
 
     return pos;
@@ -212,7 +188,7 @@ static void render_status_line(wow_multibar_t *mb)
     char out[256];
     int pos = 0;
     char bytes_str[16];
-    format_bytes(mb->total_bytes, bytes_str, sizeof(bytes_str));
+    wow_fmt_bytes(mb->total_bytes, bytes_str, sizeof(bytes_str));
 
     double elapsed = mb_now() - mb->start_time;
     int done = mb->n_completed + mb->n_failed;
@@ -220,26 +196,26 @@ static void render_status_line(wow_multibar_t *mb)
     /* Braille spinner (5 fps) — stops when all done */
     int frame = (int)(elapsed * 5.0) % (int)N_SPINNER;
 
-    BUF_APPEND(out, sizeof(out), &pos, "\r\033[K");
+    WOW_BUF_APPEND(out, sizeof(out), pos, "\r\033[K");
 
     if (done < mb->n_total)
-        BUF_APPEND(out, sizeof(out), &pos,
+        WOW_BUF_APPEND(out, sizeof(out), pos,
                    ANSI_WHITE "%s" WOW_ANSI_RESET " ", spinner[frame]);
 
-    BUF_APPEND(out, sizeof(out), &pos,
+    WOW_BUF_APPEND(out, sizeof(out), pos,
                WOW_ANSI_DIM "[%d/%d]" WOW_ANSI_RESET " %s downloaded",
                done, mb->n_total, bytes_str);
 
     if (mb->n_failed > 0)
-        BUF_APPEND(out, sizeof(out), &pos,
+        WOW_BUF_APPEND(out, sizeof(out), pos,
                    " " WOW_ANSI_RED "(%d failed)" WOW_ANSI_RESET, mb->n_failed);
 
     if (elapsed > 0.5 && mb->total_bytes > 0) {
         char rate_str[16];
-        format_bytes((size_t)((double)mb->total_bytes / elapsed),
+        wow_fmt_bytes((size_t)((double)mb->total_bytes / elapsed),
                      rate_str, sizeof(rate_str));
         /* ⚡ = U+26A1 = \xe2\x9a\xa1 */
-        BUF_APPEND(out, sizeof(out), &pos,
+        WOW_BUF_APPEND(out, sizeof(out), pos,
                    " \xe2\x9a\xa1 " WOW_ANSI_BOLD "%s/s" WOW_ANSI_RESET,
                    rate_str);
     }
@@ -269,7 +245,7 @@ static void render_bar_at_row(wow_multibar_t *mb, int i)
 
     /* Save cursor + move up to bar's row */
     int up = n_rows - i;
-    BUF_APPEND(out, sizeof(out), &pos, "\033[s\033[%dA", up);
+    WOW_BUF_APPEND(out, sizeof(out), pos, "\033[s\033[%dA", up);
 
     /* Render the bar content */
     char bar_buf[512];
@@ -280,7 +256,7 @@ static void render_bar_at_row(wow_multibar_t *mb, int i)
     }
 
     /* Restore cursor */
-    BUF_APPEND(out, sizeof(out), &pos, "\033[u");
+    WOW_BUF_APPEND(out, sizeof(out), pos, "\033[u");
 
     /* Single atomic write */
     (void)write(STDERR_FILENO, out, (size_t)pos);
@@ -336,7 +312,7 @@ static void render_all_sorted(wow_multibar_t *mb)
     for (int row = 0; row < mb->n_bars; row++) {
         int slot = order[row];
         int up = n_rows - row;
-        BUF_APPEND(out, sizeof(out), &pos, "\033[s\033[%dA", up);
+        WOW_BUF_APPEND(out, sizeof(out), pos, "\033[s\033[%dA", up);
 
         char bar_buf[512];
         int bar_len = render_bar(&mb->slots[slot], bar_buf, sizeof(bar_buf),
@@ -346,7 +322,7 @@ static void render_all_sorted(wow_multibar_t *mb)
             pos += bar_len;
         }
 
-        BUF_APPEND(out, sizeof(out), &pos, "\033[u");
+        WOW_BUF_APPEND(out, sizeof(out), pos, "\033[u");
     }
 
     (void)write(STDERR_FILENO, out, (size_t)pos);
@@ -453,7 +429,7 @@ void wow_multibar_update(wow_multibar_t *mb, int i, size_t delta, size_t total)
                s->current == delta) {
         /* Non-TTY: announce on first update when we know the size */
         char tot_str[16];
-        format_bytes(s->total, tot_str, sizeof(tot_str));
+        wow_fmt_bytes(s->total, tot_str, sizeof(tot_str));
         fprintf(stderr, "Downloading %s (%s)...\n",
                 s->name ? s->name : "?", tot_str);
     }
@@ -477,7 +453,7 @@ void wow_multibar_finish(wow_multibar_t *mb, int i)
         render_status_line(mb);
     } else {
         char tot_str[16];
-        format_bytes(s->current, tot_str, sizeof(tot_str));
+        wow_fmt_bytes(s->current, tot_str, sizeof(tot_str));
         fprintf(stderr, "[%d/%d] Downloaded %s (%s)\n",
                 mb->n_completed + mb->n_failed, mb->n_total,
                 s->name ? s->name : "?", tot_str);

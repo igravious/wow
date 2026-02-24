@@ -10,18 +10,7 @@
 
 #include "wow/gems/list.h"
 #include "wow/tar.h"
-
-/* Format a byte count as human-readable (e.g. "4.2 KiB", "52.1 KiB") */
-static void fmt_size(char *buf, size_t bufsz, size_t bytes)
-{
-    if (bytes < 1024) {
-        snprintf(buf, bufsz, "%zu B", bytes);
-    } else if (bytes < 1024 * 1024) {
-        snprintf(buf, bufsz, "%.1f KiB", (double)bytes / 1024.0);
-    } else {
-        snprintf(buf, bufsz, "%.1f MiB", (double)bytes / (1024.0 * 1024.0));
-    }
-}
+#include "wow/util/fmt.h"
 
 static int print_entry(const char *name, size_t size,
                        char typeflag, void *ctx)
@@ -29,8 +18,8 @@ static int print_entry(const char *name, size_t size,
     (void)ctx;
     (void)typeflag;
 
-    char szbuf[32];
-    fmt_size(szbuf, sizeof(szbuf), size);
+    char szbuf[16];
+    wow_fmt_bytes(size, szbuf, sizeof(szbuf));
     printf("  %-30s (%s)\n", name, szbuf);
     return 0;
 }
