@@ -305,6 +305,76 @@ static int parse_gemspec_yaml(const uint8_t *yaml_data, size_t yaml_len,
     yaml_node_t *ruby_req = yaml_map_get(&doc, root, "required_ruby_version");
     spec->required_ruby_version = parse_simple_requirement(&doc, ruby_req);
 
+    /* bindir — defaults to "bin" */
+    s = yaml_scalar_str(yaml_map_get(&doc, root, "bindir"));
+    spec->bindir = strdup(s ? s : "bin");
+
+    /* executables — YAML sequence of binary names */
+    yaml_node_t *execs = yaml_map_get(&doc, root, "executables");
+    if (execs && execs->type == YAML_SEQUENCE_NODE) {
+        int n_exec = (int)(execs->data.sequence.items.top -
+                           execs->data.sequence.items.start);
+        if (n_exec > 0) {
+            spec->executables = calloc((size_t)n_exec, sizeof(char *));
+            if (spec->executables) {
+                size_t idx = 0;
+                yaml_node_item_t *item;
+                for (item = execs->data.sequence.items.start;
+                     item < execs->data.sequence.items.top; item++) {
+                    yaml_node_t *n = yaml_document_get_node(&doc, *item);
+                    const char *es = yaml_scalar_str(n);
+                    if (es)
+                        spec->executables[idx++] = strdup(es);
+                }
+                spec->n_executables = idx;
+            }
+        }
+    }
+
+    /* require_paths — YAML sequence of load-path directories */
+    yaml_node_t *rpaths = yaml_map_get(&doc, root, "require_paths");
+    if (rpaths && rpaths->type == YAML_SEQUENCE_NODE) {
+        int n_rp = (int)(rpaths->data.sequence.items.top -
+                         rpaths->data.sequence.items.start);
+        if (n_rp > 0) {
+            spec->require_paths = calloc((size_t)n_rp, sizeof(char *));
+            if (spec->require_paths) {
+                size_t idx = 0;
+                yaml_node_item_t *item;
+                for (item = rpaths->data.sequence.items.start;
+                     item < rpaths->data.sequence.items.top; item++) {
+                    yaml_node_t *n = yaml_document_get_node(&doc, *item);
+                    const char *rp = yaml_scalar_str(n);
+                    if (rp)
+                        spec->require_paths[idx++] = strdup(rp);
+                }
+                spec->n_require_paths = idx;
+            }
+        }
+    }
+
+    /* extensions — YAML sequence of extconf.rb paths */
+    yaml_node_t *exts = yaml_map_get(&doc, root, "extensions");
+    if (exts && exts->type == YAML_SEQUENCE_NODE) {
+        int n_ext = (int)(exts->data.sequence.items.top -
+                          exts->data.sequence.items.start);
+        if (n_ext > 0) {
+            spec->extensions = calloc((size_t)n_ext, sizeof(char *));
+            if (spec->extensions) {
+                size_t idx = 0;
+                yaml_node_item_t *item;
+                for (item = exts->data.sequence.items.start;
+                     item < exts->data.sequence.items.top; item++) {
+                    yaml_node_t *n = yaml_document_get_node(&doc, *item);
+                    const char *ep = yaml_scalar_str(n);
+                    if (ep)
+                        spec->extensions[idx++] = strdup(ep);
+                }
+                spec->n_extensions = idx;
+            }
+        }
+    }
+
     yaml_document_delete(&doc);
     yaml_parser_delete(&parser);
     return 0;
@@ -354,5 +424,15 @@ void wow_gemspec_free(struct wow_gemspec *spec)
         free(spec->deps[i].constraint);
     }
     free(spec->deps);
+    free(spec->bindir);
+    for (size_t i = 0; i < spec->n_executables; i++)
+        free(spec->executables[i]);
+    free(spec->executables);
+    for (size_t i = 0; i < spec->n_require_paths; i++)
+        free(spec->require_paths[i]);
+    free(spec->require_paths);
+    for (size_t i = 0; i < spec->n_extensions; i++)
+        free(spec->extensions[i]);
+    free(spec->extensions);
     memset(spec, 0, sizeof(*spec));
 }

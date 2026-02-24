@@ -76,7 +76,7 @@ int wow_gem_download(const char *name, const char *version,
 {
     int ret = -1;
     int fd = -1;
-    char tmp_path[WOW_WPATH];
+    char tmp_path[WOW_OS_PATH_MAX];
     tmp_path[0] = '\0';
 
     /* 1. Fetch registry metadata for URL + SHA-256 */
@@ -94,19 +94,19 @@ int wow_gem_download(const char *name, const char *version,
         verified_sha = info.sha;
 
     /* 2. Build cache path */
-    char cache_dir[WOW_WPATH];
+    char cache_dir[WOW_DIR_PATH_MAX];
     if (wow_gem_cache_dir(cache_dir, sizeof(cache_dir)) != 0)
         goto cleanup;
 
     if (wow_mkdirs(cache_dir, 0755) != 0)
         goto cleanup;
 
-    char gem_path[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(gem_path, sizeof(gem_path), "%s/%s-%s.gem",
-             cache_dir, name, version ? version : info.version);
-#pragma GCC diagnostic pop
+    const char *ver = version ? version : info.version;
+    char gem_fname[NAME_MAX];
+    snprintf(gem_fname, sizeof(gem_fname), "%s-%s.gem", name, ver);
+
+    char gem_path[WOW_OS_PATH_MAX];
+    snprintf(gem_path, sizeof(gem_path), "%s/%s", cache_dir, gem_fname);
 
     /* 3. Check if already cached */
     struct stat st;
@@ -137,10 +137,7 @@ int wow_gem_download(const char *name, const char *version,
     }
 
     /* 5. Download to temp file (mkstemps avoids race with concurrent downloads) */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(tmp_path, sizeof(tmp_path), "%s/.tmp-XXXXXX.gem", cache_dir);
-#pragma GCC diagnostic pop
 
     fd = mkstemps(tmp_path, 4);  /* 4 = strlen(".gem") */
     if (fd == -1) {

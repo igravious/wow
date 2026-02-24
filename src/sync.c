@@ -33,14 +33,6 @@
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-/* Derive Ruby API version ("3.3.0") from full version ("3.3.6"). */
-static void ruby_api_version(const char *full_ver, char *buf, size_t bufsz)
-{
-    int major = 0, minor = 0;
-    sscanf(full_ver, "%d.%d", &major, &minor);
-    snprintf(buf, bufsz, "%d.%d.0", major, minor);
-}
-
 /* Format elapsed time: < 1s → "340ms", >= 1s → "1.23s". */
 static void fmt_elapsed(double secs, char *buf, size_t bufsz)
 {
@@ -96,7 +88,7 @@ int cmd_sync(int argc, char *argv[])
     }
 
     char ruby_api[16];
-    ruby_api_version(ruby_full, ruby_api, sizeof(ruby_api));
+    wow_ruby_api_version(ruby_full, ruby_api, sizeof(ruby_api));
 
     /* ---- 3. Convert Gemfile deps to solver roots ---- */
     int n_roots = (int)gf.n_deps;
@@ -135,7 +127,7 @@ int cmd_sync(int argc, char *argv[])
     wow_http_pool_init(&pool, 4);
 
     wow_ci_provider ci;
-    wow_ci_provider_init(&ci, source, &pool);
+    wow_ci_provider_init(&ci, source, &pool, NULL);
 
     wow_provider prov = wow_ci_provider_as_provider(&ci);
     wow_solver solver;
@@ -169,7 +161,7 @@ int cmd_sync(int argc, char *argv[])
 
     int n_missing = 0;
     for (int i = 0; i < n_solved; i++) {
-        char gem_dir[WOW_WPATH];
+        char gem_dir[WOW_OS_PATH_MAX];
         snprintf(gem_dir, sizeof(gem_dir),
                  "vendor/bundle/ruby/%s/gems/%s-%s",
                  ruby_api, solver.solution[i].name,
@@ -203,13 +195,13 @@ int cmd_sync(int argc, char *argv[])
     /* ---- 7. Download missing .gem files ---- */
 
     /* Ensure cache directory exists */
-    char cache_dir[WOW_WPATH];
+    char cache_dir[WOW_DIR_PATH_MAX];
     if (wow_gem_cache_dir(cache_dir, sizeof(cache_dir)) != 0) {
         free(missing);
         goto cleanup;
     }
     {
-        char cache_dir_mut[WOW_WPATH];
+        char cache_dir_mut[WOW_DIR_PATH_MAX];
         snprintf(cache_dir_mut, sizeof(cache_dir_mut), "%s", cache_dir);
         wow_mkdirs(cache_dir_mut, 0755);
     }
@@ -221,8 +213,8 @@ int cmd_sync(int argc, char *argv[])
                                              sizeof(wow_download_result_t));
     /* Flat URL/path/label buffers */
     char (*urls)[512] = calloc((size_t)n_missing, 512);
-    char (*paths)[WOW_WPATH + 256] = calloc((size_t)n_missing,
-                                             WOW_WPATH + 256);
+    char (*paths)[WOW_OS_PATH_MAX] = calloc((size_t)n_missing,
+                                             WOW_OS_PATH_MAX);
     char (*labels)[256] = calloc((size_t)n_missing, 256);
 
     if (!specs || !results || !urls || !paths || !labels) {
@@ -254,7 +246,7 @@ int cmd_sync(int argc, char *argv[])
         const char *ver = solver.solution[si].version.raw;
 
         /* Check cache first */
-        char cached_path[WOW_WPATH + 256];
+        char cached_path[WOW_OS_PATH_MAX];
         snprintf(cached_path, sizeof(cached_path), "%s/%s-%s.gem",
                  cache_dir, name, ver);
 
@@ -267,7 +259,7 @@ int cmd_sync(int argc, char *argv[])
         int d = n_to_download;
         snprintf(urls[d], 512, "%s/downloads/%s-%s.gem",
                  src_base, name, ver);
-        snprintf(paths[d], WOW_WPATH + 256, "%s/%s-%s.gem",
+        snprintf(paths[d], WOW_OS_PATH_MAX, "%s/%s-%s.gem",
                  cache_dir, name, ver);
         snprintf(labels[d], 256, "%s-%s.gem", name, ver);
 
@@ -305,7 +297,7 @@ int cmd_sync(int argc, char *argv[])
 
     /* Ensure vendor bundle base directory exists */
     {
-        char vendor_base[WOW_WPATH];
+        char vendor_base[WOW_OS_PATH_MAX];
         snprintf(vendor_base, sizeof(vendor_base),
                  "vendor/bundle/ruby/%s/gems", ruby_api);
         wow_mkdirs(vendor_base, 0755);
@@ -316,11 +308,11 @@ int cmd_sync(int argc, char *argv[])
         const char *name = solver.solution[si].name;
         const char *ver = solver.solution[si].version.raw;
 
-        char gem_path[WOW_WPATH + 256];
+        char gem_path[WOW_OS_PATH_MAX];
         snprintf(gem_path, sizeof(gem_path), "%s/%s-%s.gem",
                  cache_dir, name, ver);
 
-        char dest_dir[WOW_WPATH];
+        char dest_dir[WOW_OS_PATH_MAX];
         snprintf(dest_dir, sizeof(dest_dir),
                  "vendor/bundle/ruby/%s/gems/%s-%s",
                  ruby_api, name, ver);

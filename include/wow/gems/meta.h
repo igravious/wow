@@ -18,6 +18,13 @@ struct wow_gemspec {
     char *required_ruby_version;    /* e.g. ">= 2.7.8" */
     struct wow_gem_dep_info *deps;
     size_t n_deps;
+    char  *bindir;                  /* default "bin", some gems use "exe" */
+    char **executables;             /* e.g. ["rubocop"] */
+    size_t n_executables;
+    char **require_paths;           /* e.g. ["lib"] or ["lib/concurrent-ruby"] */
+    size_t n_require_paths;
+    char **extensions;              /* e.g. ["ext/prism/extconf.rb"] */
+    size_t n_extensions;
 };
 
 /*
