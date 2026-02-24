@@ -1,7 +1,10 @@
 # Gemfile.lock Format Specification
 
-Research document for **wow** (Phase 0b) -- understanding the Bundler lockfile
-format so we can implement a correct parser and writer in C.
+**Historical research document (Phase 0b).** This is a non-binding reference from early
+exploration. Paths, APIs, and design decisions described here may be outdated — the
+canonical sources are `CLAUDE.md`, `docs/plan/MASTER_PLAN.md`, and `docs/ERGONOMICS.md`.
+
+Research for understanding the Bundler lockfile format so we can implement a correct parser and writer in C.
 
 ## Table of Contents
 

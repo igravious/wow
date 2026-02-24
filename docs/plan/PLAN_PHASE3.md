@@ -29,7 +29,7 @@ Umbrella headers: `include/wow/rubies.h`, `include/wow/download.h`
 
 ## 3a: Download Pre-Built Ruby — DONE
 
-`./wow.com ruby install 3.3.6` downloads Ruby to `~/.local/share/wow/ruby/`.
+`./wow.com ruby install 3.3.6` downloads Ruby to `~/.local/share/wow/rubies/`.
 
 - Determines download URL from version + platform (ruby-builder GitHub releases)
 - Downloads with progress bar (streaming to fd, reuses `src/http/client.c`)
@@ -43,7 +43,7 @@ Umbrella headers: `include/wow/rubies.h`, `include/wow/download.h`
 
 ## 3c: wow rubies list — DONE
 
-`./wow.com ruby list` scans `~/.local/share/wow/ruby/` and prints installed versions, marking the active one from nearest `.ruby-version`.
+`./wow.com ruby list` scans `~/.local/share/wow/rubies/` and prints installed versions, marking the active one from nearest `.ruby-version`.
 
 ## 3d: wow init Downloads Ruby Eagerly — DONE
 

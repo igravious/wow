@@ -1,6 +1,10 @@
 # Phase 0a: .gem Binary Format
 
-> Research deliverable. Examined sinatra-4.1.1.gem, rack-3.1.12.gem, and nokogiri-1.18.3.gem.
+> **Historical research document (Phase 0a).** This is a non-binding reference from early
+> exploration. Paths, APIs, and design decisions described here may be outdated — the
+> canonical sources are `CLAUDE.md`, `docs/plan/MASTER_PLAN.md`, and `docs/ERGONOMICS.md`.
+>
+> Examined sinatra-4.1.1.gem, rack-3.1.12.gem, and nokogiri-1.18.3.gem.
 
 ## Overall Structure
 

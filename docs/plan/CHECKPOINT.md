@@ -109,7 +109,7 @@ Phase 7 (parallel downloads) was pulled forward and merged into Phase 3, since t
 3. **Bounded concurrency**: Worker pool with `min(n, max_concurrent)` threads pulling from a mutex-protected queue. Default 50 concurrent (matching uv's semaphore pattern).
 4. **uv-style progress**: Multi-bar display with sorted bars, dynamic column widths (name padded to max, `%7s/%-7s` byte counters), braille spinner, throughput indicator.
 5. **Tar security**: Rejects path traversal, absolute paths, hard links, device nodes, FIFOs, and symlinks escaping dest_dir.
-6. **File locking**: `flock()` on `~/.local/share/wow/ruby/.lock` prevents concurrent installs corrupting state.
+6. **File locking**: `flock()` on `~/.local/share/wow/rubies/.lock` prevents concurrent installs corrupting state.
 7. **Directory restructure**: Flat `src/` reorganised into `src/http/`, `src/download/`, `src/rubies/` domain subdirectories with matching `include/wow/` headers. Umbrella convenience headers (`wow/http.h`, `wow/download.h`, `wow/rubies.h`).
 8. **C17 bump**: CFLAGS from `-std=c11` to `-std=c17`, COSMO_CFLAGS from `-std=gnu11` to `-std=gnu17`.
 

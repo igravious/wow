@@ -107,7 +107,7 @@ ls vendor/bundle/ruby/4.0.0/gems/
 **Demo:** `wow run ruby -e "require 'sinatra'; puts Sinatra::VERSION"`
 
 **Implementation (updated with Kimi review):**
-- Read `.ruby-version` → find managed Ruby in `~/.local/share/wow/ruby/`
+- Read `.ruby-version` → find managed Ruby in `~/.local/share/wow/rubies/`
 - Set `GEM_HOME` and `GEM_PATH` to `vendor/bundle/ruby/{version}/`
 - Set `BUNDLE_GEMFILE` to `./Gemfile`
 - Set `PATH` to include managed Ruby's `bin/` directory — so `wow run rake` works when rake is a bundled gem with a binstub
@@ -121,7 +121,7 @@ ls vendor/bundle/ruby/4.0.0/gems/
 
 # Verify PATH includes managed Ruby bin:
 ../build/wow.com run which ruby
-# ~/.local/share/wow/ruby/ruby-4.0-linux-x86_64/bin/ruby
+# ~/.local/share/wow/rubies/ruby-4.0-linux-x86_64/bin/ruby
 
 # Verify bundled gem binstubs work:
 ../build/wow.com run rake --version

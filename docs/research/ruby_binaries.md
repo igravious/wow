@@ -1,6 +1,10 @@
 # Phase 0d: Ruby Pre-Built Binaries Research
 
-> Research deliverable for wow (uv for Ruby in C). Documents available pre-built Ruby binary sources, URL patterns, and verification strategies.
+> **Historical research document (Phase 0d).** This is a non-binding reference from early
+> exploration. Paths, APIs, and design decisions described here may be outdated — the
+> canonical sources are `CLAUDE.md`, `docs/plan/MASTER_PLAN.md`, and `docs/ERGONOMICS.md`.
+>
+> Documents available pre-built Ruby binary sources, URL patterns, and verification strategies.
 
 ## Table of Contents
 

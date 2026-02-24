@@ -100,7 +100,7 @@ Only vendored dep: **cJSON** (single .c/.h for rubygems.org JSON API).
 
 ```
 ~/.local/share/wow/
-├── ruby/
+├── rubies/
 │   ├── .lock
 │   ├── .temp/
 │   ├── ruby-4.0.1-linux-x86_64/
@@ -165,7 +165,10 @@ Every micro-phase has a working demo. See PLAN_PHASEn.md for details.
 | 5 | Gemfile Parser | 5a–5c | re2c + lemon parse a real Gemfile | Next |
 | 6 | PubGrub | 6a–6d | Resolve sinatra deps, generate Gemfile.lock | |
 | 8 | End-to-End | 8a–8c | Full `wow sync` with uv-style output | |
+| 8.2 | Prod Hardening | 8.2a–8.2d | Signals, disk checks, stale cleanup, cache clean | |
 | 8.3 | HTTP Hardening | 8.3a–8.3e | Compression, proxy, auth, retry, pooling | |
+| 8.4 | wowx | — | `wowx rubocop` ephemeral gem runner | |
+| 8.5 | Download Resume | — | Resume interrupted Ruby tarball downloads | |
 | 8.6 | wow curl | 8.6a–8.6b | Diagnostic HTTP tool | |
 | 9 | Publish | 9a–9c | `wow publish` to rubygems.org | |
 

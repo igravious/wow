@@ -1,6 +1,10 @@
 # Phase 0c: RubyGems.org API Reference
 
-> Research deliverable for wow (uv for Ruby in C). Documents the RubyGems.org API endpoints needed for dependency resolution and gem downloading.
+> **Historical research document (Phase 0c).** This is a non-binding reference from early
+> exploration. Paths, APIs, and design decisions described here may be outdated — the
+> canonical sources are `CLAUDE.md`, `docs/plan/MASTER_PLAN.md`, and `docs/ERGONOMICS.md`.
+>
+> Documents the RubyGems.org API endpoints needed for dependency resolution and gem downloading.
 
 ## Table of Contents
 
