@@ -10,8 +10,15 @@
 
 #include <limits.h>
 
-/* Extended path buffer for composite paths (base + suffix) */
-#define WOW_WPATH  (PATH_MAX + 256)
+/* Path buffer sizing:
+ * - WOW_OS_PATH_MAX:  full path (what the OS accepts)
+ * - WOW_DIR_PATH_MAX: directory-only (leaves room for NAME_MAX + '/')
+ *
+ * With correct sizing, GCC can prove snprintf(full, WOW_OS_PATH_MAX,
+ * "%s/%s", dir, name) won't truncate — no pragma needed.
+ */
+#define WOW_OS_PATH_MAX   PATH_MAX
+#define WOW_DIR_PATH_MAX  (PATH_MAX - (NAME_MAX + 1))
 
 /* ANSI escape sequences for terminal output */
 #define WOW_ANSI_BOLD   "\033[1m"
