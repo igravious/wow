@@ -1,5 +1,7 @@
 #include <errno.h>
 #include <limits.h>
+
+#include "wow/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -246,6 +248,29 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    /* When invoked via the APE loader (e.g. /usr/bin/ape /usr/local/bin/wow),
+     * argv[0] may be the loader path rather than the binary's own name.
+     * Fall back to /proc/self/exe to discover our real identity. */
+    if (strcmp(progname, "wow") != 0) {
+        static char exe_buf[PATH_MAX];
+        ssize_t n = readlink("/proc/self/exe", exe_buf, sizeof(exe_buf) - 1);
+        if (n > 0) {
+            exe_buf[n] = '\0';
+            const char *exe_base = strrchr(exe_buf, '/');
+            exe_base = exe_base ? exe_base + 1 : exe_buf;
+            size_t elen = strlen(exe_base);
+            if (elen > 4 && strcmp(exe_base + elen - 4, ".com") == 0) {
+                if (elen - 4 < sizeof(basename_buf)) {
+                    memcpy(basename_buf, exe_base, elen - 4);
+                    basename_buf[elen - 4] = '\0';
+                    exe_base = basename_buf;
+                }
+            }
+            if (strcmp(exe_base, "wow") == 0)
+                progname = exe_base;
+        }
+    }
+
     if (strcmp(progname, "wow") != 0) {
         /* Shim mode */
         char version[32];
@@ -255,20 +280,12 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        wow_platform_t plat;
-        wow_detect_platform(&plat);
-        const char *rb_plat = wow_ruby_builder_platform(&plat);
-        if (!rb_plat) {
-            fprintf(stderr, "wow: unsupported platform\n");
-            return 1;
-        }
-
-        char base[PATH_MAX];
+        char base[WOW_DIR_PATH_MAX];
         if (wow_ruby_base_dir(base, sizeof(base)) != 0) return 1;
 
-        char bin_path[PATH_MAX + 256];
-        snprintf(bin_path, sizeof(bin_path), "%s/ruby-%s-%s/bin/%s",
-                 base, version, rb_plat, progname);
+        char bin_path[WOW_OS_PATH_MAX];
+        snprintf(bin_path, sizeof(bin_path), "%s/%s/bin/%s",
+                 base, version, progname);
 
         if (access(bin_path, X_OK) != 0) {
             fprintf(stderr, "wow: Ruby %s not installed "
