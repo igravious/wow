@@ -1,0 +1,65 @@
+# gem_manifest.tsv — gem→executable→version_flag→tags mapping
+#
+# Single source of truth for the wowx comparison test harness.
+# Tab-separated. Shell-parseable with: IFS=$'\t' read -r gem exe flag tags
+#
+# Columns:
+#   gem_name       — the gem name as passed to `wowx` (and `gem install`)
+#   executable     — the binary that the gem provides (from gemspec executables)
+#   version_flag   — flag to print version (--version, -v, version)
+#   tags           — comma-separated: native (C ext), meta (binary in a dep)
+#
+# gem_name	executable	version_flag	tags
+#
+# ── Linters & formatters ──────────────────────────────────────────────
+rubocop	rubocop	--version
+reek	reek	--version
+rufo	rufo	--version
+htmlbeautifier	htmlbeautifier	--version
+haml_lint	haml-lint	--version
+slim_lint	slim-lint	--version
+flay	flay	--version
+#
+# ── Build & task tools ────────────────────────────────────────────────
+rake	rake	--version
+thor	thor	version
+foreman	foreman	--version
+#
+# ── Testing ───────────────────────────────────────────────────────────
+rspec-core	rspec	--version
+#
+# ── Documentation ─────────────────────────────────────────────────────
+yard	yard	--version
+rdoc	rdoc	--version
+kramdown	kramdown	--version
+#
+# ── Debugging & REPL ──────────────────────────────────────────────────
+pry	pry	--version
+irb	irb	--version
+#
+# ── Security ──────────────────────────────────────────────────────────
+brakeman	brakeman	--version
+bundler-audit	bundler-audit	--version
+#
+# ── Type checking & analysis ──────────────────────────────────────────
+rbs	rbs	--version
+typeprof	typeprof	--version
+ruby-lsp	ruby-lsp	--version
+steep	steep	--version
+solargraph	solargraph	--version
+#
+# ── Servers ───────────────────────────────────────────────────────────
+rackup	rackup	--version
+puma	puma	--version	native
+#
+# ── Formatters ────────────────────────────────────────────────────────
+syntax_tree	stree	version
+#
+# ── Top 100 gems with executables ─────────────────────────────────────
+diff-lcs	ldiff	--version
+parser	ruby-parse	--version
+coderay	coderay	--version
+racc	racc	--version	native
+rails	rails	--version	meta
+byebug	byebug	--version	native
+cocoapods	pod	--version	meta

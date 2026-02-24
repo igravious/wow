@@ -1,0 +1,28 @@
+# Dockerfile.oracle — Bundler oracle image for wowx comparison testing
+#
+# Provides a clean Ruby + Bundler environment to produce "expected" output.
+# Alpine-based to match wow's Docker philosophy (see uv_docker.sh).
+# One image per Ruby version. Built once, reused for all gem tests.
+#
+# ruby:X.Y-alpine already includes Ruby + RubyGems + Bundler.
+# build-base is only needed for native extension gems (puma, byebug, racc).
+#
+# Build:
+#   docker build -t wow-oracle:ruby-3.3 -f Dockerfile.oracle .
+#   docker build -t wow-oracle:ruby-3.2 -f Dockerfile.oracle --build-arg RUBY_VERSION=3.2 .
+#   docker build -t wow-oracle:ruby-4.0 -f Dockerfile.oracle --build-arg RUBY_VERSION=4.0 .
+
+ARG RUBY_VERSION=3.3
+FROM ruby:${RUBY_VERSION}-alpine
+
+# build-base: gcc/g++/make/musl-dev for native extension gems
+# yaml-dev: libyaml headers for psych (needed by rdoc, irb, typeprof)
+RUN apk add --no-cache build-base yaml-dev git
+
+# Run as non-root — some gems (cocoapods) refuse to run as root.
+RUN adduser -D -h /home/tester tester && \
+    mkdir -p /app /gem-cache && \
+    chown tester:tester /app /gem-cache
+USER tester
+
+WORKDIR /app

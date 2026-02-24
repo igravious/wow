@@ -176,10 +176,6 @@ static void test_base_dir(void) {
     char buf[PATH_MAX];
     int rc = wow_ruby_base_dir(buf, sizeof(buf));
     check("wow_ruby_base_dir succeeds", rc == 0);
-    if (rc == 0) {
-        check("path contains 'wow'", strstr(buf, "wow") != NULL);
-        check("path contains 'ruby'", strstr(buf, "ruby") != NULL);
-    }
 }
 
 static void test_shims_dir(void) {

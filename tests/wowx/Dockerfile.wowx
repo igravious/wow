@@ -1,0 +1,47 @@
+# Dockerfile.wowx — wowx runner image for fair comparison testing
+#
+# Provides a clean environment with dev tooling so native extensions
+# can be compiled inside Docker (same conditions as the Bundler oracle).
+# wowx.com is pre-installed; Ruby is auto-installed on first run.
+#
+# Ubuntu 22.04 to match the pre-built Ruby binaries (ruby-builder).
+#
+# Build:
+#   docker build -t wow-wowx -f Dockerfile.wowx --build-arg WOWX=build/wowx.com .
+
+ARG BASE=ubuntu:22.04
+FROM ${BASE}
+
+# Dev tooling for native extension compilation (gcc, make, etc.)
+# git: needed by cocoapods at runtime
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        libffi-dev \
+        libssl-dev \
+        wget \
+        zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# APE loader — Cosmopolitan binaries need binfmt_misc or an explicit loader.
+# Install the ape loader and wrap the binary so it works in any container
+# without requiring host-level binfmt_misc registration.
+RUN wget -qO /usr/bin/ape https://cosmo.zip/pub/cosmos/bin/ape-$(uname -m).elf && \
+    chmod +x /usr/bin/ape
+
+# Pre-install wowx.com with ape wrapper
+ARG WOWX=build/wowx.com
+COPY ${WOWX} /usr/local/bin/wowx.com
+RUN chmod +x /usr/local/bin/wowx.com && \
+    printf '#!/bin/sh\nexec /usr/bin/ape /usr/local/bin/wowx.com "$@"\n' \
+        >/usr/local/bin/wowx && \
+    chmod +x /usr/local/bin/wowx
+
+# Run as non-root — some gems (cocoapods) refuse to run as root.
+RUN useradd -m tester && mkdir -p /app && chown tester:tester /app
+USER tester
+
+WORKDIR /app

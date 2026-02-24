@@ -152,7 +152,7 @@ int main(int argc, char **argv)
                ruby_version, rb_plat);
         printf("\n  Note: binary tarballs have an x64/ prefix to strip:\n");
         printf("  tar -xzf ruby-%s-%s.tar.gz --strip-components=1 "
-               "-C ~/.local/share/wow/ruby/%s/\n",
+               "-C ~/.local/share/wow/rubies/%s/\n",
                ruby_version, rb_plat, ruby_version);
     } else {
         printf("Binary:    (no pre-built binary available for %s)\n", p.wow_id);

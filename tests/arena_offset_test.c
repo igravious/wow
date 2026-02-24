@@ -228,7 +228,7 @@ static void test_provider_multiple_fetches(void)
     int passed = 1;
 
     wow_http_pool_init(&pool, 4);
-    wow_ci_provider_init(&ci, "https://rubygems.org", &pool);
+    wow_ci_provider_init(&ci, "https://rubygems.org", &pool, NULL);
     
     /* Build provider vtable */
     wow_provider prov = wow_ci_provider_as_provider(&ci);
