@@ -787,8 +787,9 @@ static const char *interpolate_string(struct wow_eval_ctx *ctx,
             int needed = subst ? subst_len : (var_len + 3);  /* +3 for #{} */
             if (rpos + needed + 1 > cap) {
                 cap = (rpos + needed + 1) * 2;
-                result = realloc(result, (size_t)cap);
-                if (!result) return NULL;
+                char *new_result = realloc(result, (size_t)cap);
+                if (!new_result) { free(result); return NULL; }
+                result = new_result;
             }
 
             if (subst) {
@@ -807,8 +808,9 @@ static const char *interpolate_string(struct wow_eval_ctx *ctx,
         } else {
             if (rpos + 2 > cap) {
                 cap *= 2;
-                result = realloc(result, (size_t)cap);
-                if (!result) return NULL;
+                char *new_result = realloc(result, (size_t)cap);
+                if (!new_result) { free(result); return NULL; }
+                result = new_result;
             }
             result[rpos++] = *p++;
         }

@@ -378,16 +378,22 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
             /* Grow arrays if needed */
             if (n_ver >= ver_cap) {
                 ver_cap *= 2;
-                vers = realloc(vers,
+                wow_gemver *new_vers = realloc(vers,
                                (size_t)ver_cap * sizeof(wow_gemver));
-                vdeps = realloc(vdeps,
-                                (size_t)ver_cap * sizeof(struct wow_ci_ver_deps));
-                if (!vers || !vdeps) {
-                    free(vers);
-                    free(vdeps);
+                if (!new_vers) {
+                    free(vers); free(vdeps);
                     wow_response_free(&resp);
                     return NULL;
                 }
+                vers = new_vers;
+                struct wow_ci_ver_deps *new_vdeps = realloc(vdeps,
+                                (size_t)ver_cap * sizeof(struct wow_ci_ver_deps));
+                if (!new_vdeps) {
+                    free(vers); free(vdeps);
+                    wow_response_free(&resp);
+                    return NULL;
+                }
+                vdeps = new_vdeps;
             }
 
             vers[n_ver] = ver;
