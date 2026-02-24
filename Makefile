@@ -46,8 +46,13 @@ OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
 -include $(OBJS:.o=.d)
 -include $(BUILDDIR)/wowx_main.d
 
+# Resolver debug test harness (source lives under tests/ but links into wow.com)
+RESOLVER_TEST_SRCS = $(wildcard tests/resolver/*.c)
+RESOLVER_TEST_OBJS = $(patsubst tests/resolver/%.c,$(BUILDDIR)/resolver/test/%.o,$(RESOLVER_TEST_SRCS))
+-include $(RESOLVER_TEST_OBJS:.o=.d)
+
 # Create subdirectories for object files
-OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/resolver $(BUILDDIR)/util $(BUILDDIR)/internal
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/resolver $(BUILDDIR)/resolver/test $(BUILDDIR)/util $(BUILDDIR)/internal
 
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
@@ -82,8 +87,8 @@ SHARED_OBJS = $(filter-out $(BUILDDIR)/main.o,$(OBJS))
 # --- build targets ---
 all: $(BUILDDIR)/wow.com $(BUILDDIR)/wowx.com
 
-$(BUILDDIR)/wow.com: $(OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(TLS_LIB) $(LIBYAML_LIB)
+$(BUILDDIR)/wow.com: $(OBJS) $(RESOLVER_TEST_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(RESOLVER_TEST_OBJS) $(TLS_LIB) $(LIBYAML_LIB)
 	$(ZIPCOPY) $(ASSETS_ZIP) $@
 
 $(BUILDDIR)/wowx.com: $(BUILDDIR)/wowx_main.o $(SHARED_OBJS) $(TLS_LIB) $(LIBYAML_LIB) $(ASSETS_ZIP)
@@ -129,6 +134,9 @@ $(BUILDDIR)/gemfile/parser.o: src/gemfile/parser.c | $(BUILDDIR)/gemfile
 
 $(BUILDDIR)/resolver/%.o: src/resolver/%.c | $(BUILDDIR)/resolver
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -c $< -o $@
+
+$(BUILDDIR)/resolver/test/%.o: tests/resolver/%.c | $(BUILDDIR)/resolver/test
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Itests/resolver -c $< -o $@
 
 $(BUILDDIR)/util/%.o: src/util/%.c | $(BUILDDIR)/util
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -c $< -o $@

@@ -136,7 +136,7 @@ static int cmd_debug_gemfile_lex(int argc, char *argv[]) {
     return wow_gemfile_lex_file(argv[1]) == 0 ? 0 : 1;
 }
 
-/* Declared in resolver/cmd.c */
+/* Declared in tests/resolver/ — linked into wow.com */
 int cmd_debug_version_test(int argc, char *argv[]);
 int cmd_debug_pubgrub_test(int argc, char *argv[]);
 
