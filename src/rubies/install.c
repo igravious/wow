@@ -64,7 +64,7 @@ int wow_ruby_install(const char *version)
     }
 
     /* Parse definition file */
-    char def_path[WOW_WPATH];
+    char def_path[WOW_OS_PATH_MAX];
     snprintf(def_path, sizeof(def_path), "%s/ruby-builder/%s",
              WOW_DEFS_BASE, full_ver);
 
@@ -94,17 +94,13 @@ int wow_ruby_install(const char *version)
         return -1;
     }
 
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
     if (wow_mkdirs(base, 0755) != 0) return -1;
 
     /* Check if already installed */
-    char install_dir[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
-             base, full_ver, rb_plat);
-#pragma GCC diagnostic pop
+    char install_dir[WOW_OS_PATH_MAX];
+    snprintf(install_dir, sizeof(install_dir), "%s/%s", base, full_ver);
     struct stat st;
     if (stat(install_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
         printf("Ruby %s already installed\n", full_ver);
@@ -124,17 +120,14 @@ int wow_ruby_install(const char *version)
 
     /* Asset name for status messages */
     char asset_name[128];
-    snprintf(asset_name, sizeof(asset_name), "ruby-%s-%s", full_ver, rb_plat);
+    snprintf(asset_name, sizeof(asset_name), "ruby %s", full_ver);
 
     double t0 = wow_now_secs();
 
     /* Download to temp file */
-    char tmp_tarball[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(tmp_tarball, sizeof(tmp_tarball), "%s/.temp-ruby-%s-%s.tar.gz",
-             base, full_ver, rb_plat);
-#pragma GCC diagnostic pop
+    char tmp_tarball[WOW_OS_PATH_MAX];
+    snprintf(tmp_tarball, sizeof(tmp_tarball), "%s/.temp-%s.tar.gz",
+             base, full_ver);
 
     int fd = open(tmp_tarball, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd == -1) {
@@ -168,12 +161,8 @@ int wow_ruby_install(const char *version)
     }
 
     /* Extract to staging directory */
-    char staging[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(staging, sizeof(staging), "%s/.temp-ruby-%s-%s",
-             base, full_ver, rb_plat);
-#pragma GCC diagnostic pop
+    char staging[WOW_OS_PATH_MAX];
+    snprintf(staging, sizeof(staging), "%s/.temp-%s", base, full_ver);
 
     if (wow_mkdirs(staging, 0755) != 0) {
         unlink(tmp_tarball);
@@ -198,34 +187,6 @@ int wow_ruby_install(const char *version)
         return -1;
     }
 
-    /* Minor-version symlink */
-    char minor_ver[16] = {0};
-    const char *last_dot = strrchr(full_ver, '.');
-    if (last_dot) {
-        size_t mlen = (size_t)(last_dot - full_ver);
-        if (mlen < sizeof(minor_ver)) {
-            memcpy(minor_ver, full_ver, mlen);
-            minor_ver[mlen] = '\0';
-        }
-    }
-
-    if (minor_ver[0]) {
-        char sympath[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(sympath, sizeof(sympath), "%s/ruby-%s-%s",
-                 base, minor_ver, rb_plat);
-#pragma GCC diagnostic pop
-        unlink(sympath);
-        char symtarget[256];
-        snprintf(symtarget, sizeof(symtarget), "ruby-%s-%s",
-                 full_ver, rb_plat);
-        if (symlink(symtarget, sympath) != 0) {
-            fprintf(stderr, "wow: warning: could not create symlink "
-                    "%s -> %s: %s\n", sympath, symtarget, strerror(errno));
-        }
-    }
-
     /* Create shims */
     char self_path[PATH_MAX];
     ssize_t self_len = readlink("/proc/self/exe", self_path,
@@ -239,23 +200,12 @@ int wow_ruby_install(const char *version)
 
     double elapsed = wow_now_secs() - t0;
 
-    /* Minor version for summary */
-    char short_name[64];
-    if (minor_ver[0])
-        snprintf(short_name, sizeof(short_name), "ruby%s", minor_ver);
-    else
-        snprintf(short_name, sizeof(short_name), "ruby%s", full_ver);
-
     if (wow_use_colour()) {
         fprintf(stderr, WOW_ANSI_DIM "Installed " WOW_ANSI_BOLD "Ruby %s"
                 WOW_ANSI_RESET WOW_ANSI_DIM " in %.2fs" WOW_ANSI_RESET "\n",
                 full_ver, elapsed);
-        fprintf(stderr, " " WOW_ANSI_CYAN "+" WOW_ANSI_RESET " "
-                WOW_ANSI_BOLD "%s" WOW_ANSI_RESET " " WOW_ANSI_DIM "(%s)"
-                WOW_ANSI_RESET "\n", asset_name, short_name);
     } else {
         fprintf(stderr, "Installed Ruby %s in %.2fs\n", full_ver, elapsed);
-        fprintf(stderr, " + %s (%s)\n", asset_name, short_name);
     }
 
     return 0;
@@ -266,7 +216,7 @@ int wow_ruby_install(const char *version)
 int wow_cosmoruby_install(const char *version)
 {
     /* Parse definition file */
-    char def_path[WOW_WPATH];
+    char def_path[WOW_OS_PATH_MAX];
     snprintf(def_path, sizeof(def_path), "%s/cosmoruby/%s",
              WOW_DEFS_BASE, version);
 
@@ -277,19 +227,19 @@ int wow_cosmoruby_install(const char *version)
         return -1;
     }
 
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
     if (wow_mkdirs(base, 0755) != 0) return -1;
 
-    /* Install directory: cosmoruby-{ver}/bin/ */
-    char install_dir[WOW_WPATH];
-    char bin_dir[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
+    /* Install directory: cosmoruby-{ver}/bin/
+     * All paths composed directly from base[WOW_DIR_PATH_MAX] to avoid
+     * chain composition (install_dir→bin_dir→tmp) that GCC can't prove safe. */
+    char install_dir[WOW_OS_PATH_MAX];
+    char bin_dir[WOW_OS_PATH_MAX];
     snprintf(install_dir, sizeof(install_dir), "%s/cosmoruby-%s",
              base, version);
-    snprintf(bin_dir, sizeof(bin_dir), "%s/bin", install_dir);
-#pragma GCC diagnostic pop
+    snprintf(bin_dir, sizeof(bin_dir), "%s/cosmoruby-%s/bin",
+             base, version);
 
     struct stat st;
     if (stat(bin_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
@@ -328,15 +278,14 @@ int wow_cosmoruby_install(const char *version)
             break;
         }
 
-        char tmp_path[WOW_WPATH];
-        char final_path[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(tmp_path, sizeof(tmp_path), "%s/.temp-%s", bin_dir,
-                 entry->name);
-        snprintf(final_path, sizeof(final_path), "%s/%s", bin_dir,
-                 entry->name);
-#pragma GCC diagnostic pop
+        char tmp_path[WOW_OS_PATH_MAX];
+        char final_path[WOW_OS_PATH_MAX];
+        snprintf(tmp_path, sizeof(tmp_path),
+                 "%s/cosmoruby-%s/bin/.temp-%s",
+                 base, version, entry->name);
+        snprintf(final_path, sizeof(final_path),
+                 "%s/cosmoruby-%s/bin/%s",
+                 base, version, entry->name);
 
         int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
         if (fd == -1) {
@@ -426,7 +375,7 @@ int wow_cosmoruby_install(const char *version)
 
 int wow_ruby_ensure(const char *version)
 {
-    char bin[WOW_WPATH];
+    char bin[WOW_OS_PATH_MAX];
     if (wow_ruby_bin_path(version, bin, sizeof(bin)) == 0)
         return 0;
     return wow_ruby_install(version);

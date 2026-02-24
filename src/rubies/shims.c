@@ -29,12 +29,12 @@ static const char *shim_names[] = {
 
 int wow_create_shims(const char *wow_binary_path)
 {
-    char shims[PATH_MAX];
+    char shims[WOW_DIR_PATH_MAX];
     if (wow_shims_dir(shims, sizeof(shims)) != 0) return -1;
     if (wow_mkdirs(shims, 0755) != 0) return -1;
 
     for (const char **name = shim_names; *name; name++) {
-        char shim_path[WOW_WPATH];
+        char shim_path[WOW_OS_PATH_MAX];
         snprintf(shim_path, sizeof(shim_path), "%s/%s", shims, *name);
 
         /* Remove existing shim */

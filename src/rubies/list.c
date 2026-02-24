@@ -5,14 +5,13 @@
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "wow/common.h"
 #include "wow/rubies.h"
 
 int wow_ruby_list(const char *active_version)
 {
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
 
     DIR *d = opendir(base);
@@ -24,24 +23,16 @@ int wow_ruby_list(const char *active_version)
     struct dirent *ent;
     int count = 0;
     while ((ent = readdir(d)) != NULL) {
-        if (strncmp(ent->d_name, "ruby-", 5) != 0) continue;
-
-        /* Skip symlinks (minor-version aliases) */
-        char full_path[WOW_WPATH];
-        snprintf(full_path, sizeof(full_path), "%s/%s", base, ent->d_name);
-        struct stat st;
-        if (lstat(full_path, &st) != 0) continue;
-        if (S_ISLNK(st.st_mode)) continue;
-        if (!S_ISDIR(st.st_mode)) continue;
+        if (ent->d_name[0] == '.') continue;
+        if (strncmp(ent->d_name, "cosmoruby-", 10) == 0) continue;
+        /* Version directories start with a digit */
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
 
         int active = 0;
-        if (active_version) {
-            const char *ver_start = ent->d_name + 5;
-            if (strstr(ver_start, active_version) == ver_start)
-                active = 1;
-        }
+        if (active_version && strcmp(ent->d_name, active_version) == 0)
+            active = 1;
 
-        printf("  %s%s\n", ent->d_name, active ? "  (active)" : "");
+        printf("  ruby %s%s\n", ent->d_name, active ? "  (active)" : "");
         count++;
     }
     closedir(d);

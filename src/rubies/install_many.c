@@ -36,14 +36,14 @@ int wow_ruby_install_many(const char **versions, int n)
         return -1;
     }
 
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
     if (wow_mkdirs(base, 0755) != 0) return -1;
 
     /* Phase 1: resolve versions and filter already-installed */
     char full_vers[MAX_BATCH][32];
     char urls[MAX_BATCH][512];
-    char tmp_paths[MAX_BATCH][WOW_WPATH];
+    char tmp_paths[MAX_BATCH][WOW_OS_PATH_MAX];
     char labels[MAX_BATCH][128];
     int  need_download[MAX_BATCH];
     int  n_to_download = 0;
@@ -57,28 +57,26 @@ int wow_ruby_install_many(const char **versions, int n)
                                      sizeof(full_vers[i])) != 0)
             continue;
 
-        char install_dir[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
-                 base, full_vers[i], rb_plat);
-#pragma GCC diagnostic pop
+        /* Copy to a local char[32] so GCC's aarch64 backend sees a
+         * bounded buffer (it otherwise computes 2048 bytes remaining
+         * in the 2-D array and warns about truncation). */
+        char fv[32];
+        memcpy(fv, full_vers[i], sizeof(fv));
+
+        char install_dir[WOW_OS_PATH_MAX];
+        snprintf(install_dir, sizeof(install_dir), "%s/%s", base, fv);
         struct stat st;
         if (stat(install_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
-            printf("Ruby %s already installed\n", full_vers[i]);
+            printf("Ruby %s already installed\n", fv);
             continue;
         }
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
         snprintf(urls[i], sizeof(urls[i]),
                  "https://github.com/ruby/ruby-builder/releases/download/"
-                 "toolcache/ruby-%s-%s.tar.gz", full_vers[i], rb_plat);
+                 "toolcache/ruby-%s-%s.tar.gz", fv, rb_plat);
         snprintf(tmp_paths[i], sizeof(tmp_paths[i]),
-                 "%s/.temp-ruby-%s-%s.tar.gz", base, full_vers[i], rb_plat);
-        snprintf(labels[i], sizeof(labels[i]),
-                 "ruby-%s-%s", full_vers[i], rb_plat);
-#pragma GCC diagnostic pop
+                 "%s/.temp-%s.tar.gz", base, fv);
+        snprintf(labels[i], sizeof(labels[i]), "ruby %s", fv);
 
         need_download[i] = 1;
         n_to_download++;
@@ -116,18 +114,16 @@ int wow_ruby_install_many(const char **versions, int n)
     int n_installed = 0;
     for (int s = 0; s < n_specs; s++) {
         int vi = spec_to_ver[s];
+        char fv[32];
+        memcpy(fv, full_vers[vi], sizeof(fv));
 
         if (!results[s].ok) {
-            fprintf(stderr, "wow: download failed for Ruby %s\n", full_vers[vi]);
+            fprintf(stderr, "wow: download failed for Ruby %s\n", fv);
             continue;
         }
 
-        char staging[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(staging, sizeof(staging), "%s/.temp-ruby-%s-%s",
-                 base, full_vers[vi], rb_plat);
-#pragma GCC diagnostic pop
+        char staging[WOW_OS_PATH_MAX];
+        snprintf(staging, sizeof(staging), "%s/.temp-%s", base, fv);
         if (wow_mkdirs(staging, 0755) != 0) {
             unlink(tmp_paths[vi]);
             continue;
@@ -137,45 +133,17 @@ int wow_ruby_install_many(const char **versions, int n)
         unlink(tmp_paths[vi]);
 
         if (rc != 0) {
-            fprintf(stderr, "wow: extraction failed for Ruby %s\n", full_vers[vi]);
+            fprintf(stderr, "wow: extraction failed for Ruby %s\n", fv);
             continue;
         }
 
-        char install_dir[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
-                 base, full_vers[vi], rb_plat);
-#pragma GCC diagnostic pop
+        char install_dir[WOW_OS_PATH_MAX];
+        snprintf(install_dir, sizeof(install_dir), "%s/%s", base, fv);
 
         if (rename(staging, install_dir) != 0) {
             fprintf(stderr, "wow: cannot rename %s to %s: %s\n",
                     staging, install_dir, strerror(errno));
             continue;
-        }
-
-        /* Minor-version symlink */
-        char minor_ver[16] = {0};
-        const char *last_dot = strrchr(full_vers[vi], '.');
-        if (last_dot) {
-            size_t mlen = (size_t)(last_dot - full_vers[vi]);
-            if (mlen < sizeof(minor_ver)) {
-                memcpy(minor_ver, full_vers[vi], mlen);
-                minor_ver[mlen] = '\0';
-            }
-        }
-        if (minor_ver[0]) {
-            char sympath[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-            snprintf(sympath, sizeof(sympath), "%s/ruby-%s-%s",
-                     base, minor_ver, rb_plat);
-#pragma GCC diagnostic pop
-            unlink(sympath);
-            char symtarget[256];
-            snprintf(symtarget, sizeof(symtarget), "ruby-%s-%s",
-                     full_vers[vi], rb_plat);
-            symlink(symtarget, sympath);
         }
 
         n_installed++;

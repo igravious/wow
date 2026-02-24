@@ -16,6 +16,7 @@
 
 #include "wow/common.h"
 #include "wow/rubies/resolve.h"
+#include "wow/resolver/gemver.h"
 #include "wow/version.h"
 
 /* ── String helper ───────────────────────────────────────────────── */
@@ -75,15 +76,12 @@ void wow_detect_platform(wow_platform_t *p)
     detect_libc(p);
 
     /* Compose platform identifier */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
     if (p->libc[0])
         snprintf(p->wow_id, sizeof(p->wow_id), "%s-%s-%s",
                  p->os, p->arch, p->libc);
     else
         snprintf(p->wow_id, sizeof(p->wow_id), "%s-%s",
                  p->os, p->arch);
-#pragma GCC diagnostic pop
 }
 
 const char *wow_ruby_builder_platform(const wow_platform_t *p)
@@ -129,16 +127,16 @@ static int wow_data_dir(char *buf, size_t bufsz)
 
 int wow_ruby_base_dir(char *buf, size_t bufsz)
 {
-    char data[PATH_MAX];
+    char data[WOW_DIR_PATH_MAX];
     if (wow_data_dir(data, sizeof(data)) != 0) return -1;
-    int n = snprintf(buf, bufsz, "%s/ruby", data);
+    int n = snprintf(buf, bufsz, "%s/rubies", data);
     if (n < 0 || (size_t)n >= bufsz) return -1;
     return 0;
 }
 
 int wow_shims_dir(char *buf, size_t bufsz)
 {
-    char data[PATH_MAX];
+    char data[WOW_DIR_PATH_MAX];
     if (wow_data_dir(data, sizeof(data)) != 0) return -1;
     int n = snprintf(buf, bufsz, "%s/shims", data);
     if (n < 0 || (size_t)n >= bufsz) return -1;
@@ -182,14 +180,14 @@ int wow_resolve_ruby_version(const char *input, char *full_ver, size_t bufsz)
 
 int wow_find_ruby_version(char *buf, size_t bufsz)
 {
-    char cwd[PATH_MAX];
+    char cwd[WOW_DIR_PATH_MAX];
     if (!getcwd(cwd, sizeof(cwd))) return -1;
 
-    char dir[PATH_MAX];
+    char dir[WOW_DIR_PATH_MAX];
     snprintf(dir, sizeof(dir), "%s", cwd);
 
     for (;;) {
-        char path[WOW_WPATH];
+        char path[WOW_OS_PATH_MAX];
         snprintf(path, sizeof(path), "%s/.ruby-version", dir);
 
         FILE *f = fopen(path, "r");
@@ -233,18 +231,105 @@ int wow_find_ruby_version(char *buf, size_t bufsz)
 
 int wow_ruby_bin_path(const char *version, char *buf, size_t bufsz)
 {
-    wow_platform_t plat;
-    wow_detect_platform(&plat);
-    const char *rb_plat = wow_ruby_builder_platform(&plat);
-    if (!rb_plat) return -1;
-
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
 
-    int n = snprintf(buf, bufsz, "%s/ruby-%s-%s/bin/ruby",
-                     base, version, rb_plat);
+    int n = snprintf(buf, bufsz, "%s/%s/bin/ruby", base, version);
     if (n < 0 || (size_t)n >= bufsz) return -1;
 
     if (access(buf, X_OK) == 0) return 0;
     return -1;
+}
+
+/* ── Ruby API version ────────────────────────────────────────────── */
+
+void wow_ruby_api_version(const char *full_ver, char *buf, size_t bufsz)
+{
+    int major = 0, minor = 0;
+    sscanf(full_ver, "%d.%d", &major, &minor);
+    snprintf(buf, bufsz, "%d.%d.0", major, minor);
+}
+
+/* ── Pick latest installed Ruby ──────────────────────────────────── */
+
+int wow_ruby_pick_latest(char *version_buf, size_t bufsz)
+{
+    char base[WOW_DIR_PATH_MAX];
+    if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
+
+    DIR *dir = opendir(base);
+    if (!dir) return -1;
+
+    wow_gemver best;
+    int found = 0;
+
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        if (strncmp(ent->d_name, "cosmoruby-", 10) == 0) continue;
+        /* Version directories start with a digit */
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+
+        /* Directory name IS the version string (rbenv-style) */
+        wow_gemver v;
+        if (wow_gemver_parse(ent->d_name, &v) != 0) continue;
+        if (v.prerelease) continue;
+
+        if (!found || wow_gemver_cmp(&v, &best) > 0) {
+            best = v;
+            found = 1;
+        }
+    }
+
+    closedir(dir);
+
+    if (!found) return -1;
+
+    snprintf(version_buf, bufsz, "%s", best.raw);
+    return 0;
+}
+
+/* ── Pick best installed Ruby matching a prefix ──────────────────── */
+
+int wow_ruby_pick_matching(const char *requested, char *version_buf,
+                           size_t bufsz)
+{
+    char base[WOW_DIR_PATH_MAX];
+    if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
+
+    DIR *dir = opendir(base);
+    if (!dir) return -1;
+
+    size_t rlen = strlen(requested);
+    wow_gemver best;
+    int found = 0;
+
+    struct dirent *ent;
+    while ((ent = readdir(dir)) != NULL) {
+        if (ent->d_name[0] == '.') continue;
+        if (strncmp(ent->d_name, "cosmoruby-", 10) == 0) continue;
+        if (ent->d_name[0] < '0' || ent->d_name[0] > '9') continue;
+
+        /* Check prefix match: "3.3" matches "3.3.10", "3.3.10" matches
+         * "3.3.10".  Require the char after the prefix is '.' or '\0'
+         * so "3.3" doesn't match "3.31.0". */
+        if (strncmp(ent->d_name, requested, rlen) != 0) continue;
+        if (ent->d_name[rlen] != '\0' && ent->d_name[rlen] != '.') continue;
+
+        wow_gemver v;
+        if (wow_gemver_parse(ent->d_name, &v) != 0) continue;
+        if (v.prerelease) continue;
+
+        if (!found || wow_gemver_cmp(&v, &best) > 0) {
+            best = v;
+            found = 1;
+        }
+    }
+
+    closedir(dir);
+
+    if (!found) return -1;
+
+    snprintf(version_buf, bufsz, "%s", best.raw);
+    return 0;
 }

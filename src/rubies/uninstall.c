@@ -21,23 +21,11 @@ int wow_ruby_uninstall(const char *version)
         snprintf(full_ver, sizeof(full_ver), "%s", version);
     }
 
-    wow_platform_t plat;
-    wow_detect_platform(&plat);
-    const char *rb_plat = wow_ruby_builder_platform(&plat);
-    if (!rb_plat) {
-        fprintf(stderr, "wow: no pre-built Ruby for %s\n", plat.wow_id);
-        return -1;
-    }
-
-    char base[PATH_MAX];
+    char base[WOW_DIR_PATH_MAX];
     if (wow_ruby_base_dir(base, sizeof(base)) != 0) return -1;
 
-    char install_dir[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(install_dir, sizeof(install_dir), "%s/ruby-%s-%s",
-             base, full_ver, rb_plat);
-#pragma GCC diagnostic pop
+    char install_dir[WOW_OS_PATH_MAX];
+    snprintf(install_dir, sizeof(install_dir), "%s/%s", base, full_ver);
 
     struct stat st;
     if (stat(install_dir, &st) != 0 || !S_ISDIR(st.st_mode)) {
@@ -45,20 +33,6 @@ int wow_ruby_uninstall(const char *version)
                 full_ver, install_dir);
         return -1;
     }
-
-    /* Extract minor version for symlink update */
-    char minor_ver[16] = {0};
-    const char *last_dot = strrchr(full_ver, '.');
-    if (last_dot) {
-        size_t mlen = (size_t)(last_dot - full_ver);
-        if (mlen < sizeof(minor_ver)) {
-            memcpy(minor_ver, full_ver, mlen);
-            minor_ver[mlen] = '\0';
-        }
-    }
-
-    char asset_name[128];
-    snprintf(asset_name, sizeof(asset_name), "ruby-%s-%s", full_ver, rb_plat);
 
     double t0 = wow_now_secs();
 
@@ -78,29 +52,6 @@ int wow_ruby_uninstall(const char *version)
         return -1;
     }
 
-    char short_name[64] = {0};
-    if (minor_ver[0]) {
-        char sympath[WOW_WPATH];
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
-        snprintf(sympath, sizeof(sympath), "%s/ruby-%s-%s",
-                 base, minor_ver, rb_plat);
-#pragma GCC diagnostic pop
-
-        char remaining[32];
-        if (wow_rubies_find_highest_patch(base, minor_ver, rb_plat, remaining, sizeof(remaining))) {
-            unlink(sympath);
-            char symtarget[256];
-            snprintf(symtarget, sizeof(symtarget), "ruby-%s-%s", remaining, rb_plat);
-            if (symlink(symtarget, sympath) == 0) {
-                snprintf(short_name, sizeof(short_name), "ruby%s", minor_ver);
-            }
-        } else {
-            unlink(sympath);
-            snprintf(short_name, sizeof(short_name), "ruby%s", minor_ver);
-        }
-    }
-
     wow_rubies_release_lock(lockfd);
 
     double elapsed = wow_now_secs() - t0;
@@ -110,18 +61,10 @@ int wow_ruby_uninstall(const char *version)
                 WOW_ANSI_RESET WOW_ANSI_DIM " in %.2fs" WOW_ANSI_RESET "\n",
                 full_ver, elapsed);
         fprintf(stderr, " " WOW_ANSI_CYAN "-" WOW_ANSI_RESET " "
-                WOW_ANSI_BOLD "%s" WOW_ANSI_RESET, asset_name);
-        if (short_name[0]) {
-            fprintf(stderr, " " WOW_ANSI_DIM "(%s)" WOW_ANSI_RESET, short_name);
-        }
-        fprintf(stderr, "\n");
+                WOW_ANSI_BOLD "ruby %s" WOW_ANSI_RESET "\n", full_ver);
     } else {
         fprintf(stderr, "Uninstalled Ruby %s in %.2fs\n", full_ver, elapsed);
-        fprintf(stderr, " - %s", asset_name);
-        if (short_name[0]) {
-            fprintf(stderr, " (%s)", short_name);
-        }
-        fprintf(stderr, "\n");
+        fprintf(stderr, " - ruby %s\n", full_ver);
     }
 
     return 0;

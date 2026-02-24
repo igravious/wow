@@ -23,7 +23,7 @@
 /* ── Version parsing ─────────────────────────────────────────────── */
 
 typedef struct {
-    char name[256];       /* display name, e.g. "3.3.6" or "cosmoruby-1.2.2" */
+    char name[280];       /* display name, e.g. "3.3.6" or "cosmoruby-1.2.2" */
     wow_ruby_impl_t impl;
     int v[4];             /* version components (up to 4: e.g. 9.4.14.0) */
     int nv;               /* how many version components parsed */
@@ -124,11 +124,8 @@ static int scan_repo(const char *dir, wow_ruby_impl_t force_impl,
             /* Cosmoruby: files are bare versions (e.g. "1.2.2"),
              * display as "cosmoruby-1.2.2" */
             def->impl = force_impl;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-truncation"
             snprintf(def->name, sizeof(def->name), "cosmoruby-%s",
                      ent->d_name);
-#pragma GCC diagnostic pop
         } else {
             /* Ruby-builder: use impl detection from filename */
             snprintf(def->name, sizeof(def->name), "%s", ent->d_name);
