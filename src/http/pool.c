@@ -30,10 +30,10 @@
 #include "wow/http/client.h"
 #include "wow/http/pool.h"
 #include "wow/http/proxy.h"
+#include "wow/defaults.h"
 #include "wow/version.h"
 
-/* 429 retry/backoff: max 3 retries with exponential backoff (1s, 2s, 4s) */
-#define WOW_HTTP_MAX_RETRIES 3
+/* Uses WOW_HTTP_MAX_RETRIES from wow/defaults.h */
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)
@@ -239,7 +239,7 @@ static int pool_do_get(struct wow_pool_entry *e, const char *path,
     appendf(&request,
             "GET %s HTTP/1.1\r\n"
             "Host: %s:%s\r\n"
-            "User-Agent: wow/" WOW_VERSION "\r\n"
+            "User-Agent: " WOW_HTTP_USER_AGENT "\r\n"
             "Connection: keep-alive\r\n"
             "\r\n",
             path, e->host, e->port);

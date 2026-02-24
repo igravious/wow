@@ -20,13 +20,90 @@
 
 #include "wow/http/client.h"
 #include "wow/http/proxy.h"
+#include "wow/defaults.h"
 #include "wow/version.h"
 
 /* Global verbose flag for HTTP debugging (set by --verbose or -v) */
 int wow_http_debug = 0;
 
-/* 429 retry/backoff: max 3 retries with exponential backoff (1s, 2s, 4s) */
-#define WOW_HTTP_MAX_RETRIES 3
+/*
+ * TLS I/O callbacks (forward declarations)
+ */
+static int tls_send(void *ctx, const unsigned char *buf, size_t len);
+static int tls_recv(void *ctx, unsigned char *buf, size_t len, uint32_t timeout);
+
+/*
+ * TLS Setup Helper
+ * 
+ * Initialises and performs TLS handshake for a connection.
+ * Returns 0 on success, -1 on error.
+ */
+static int
+tls_setup(int *sock, const char *host,
+          mbedtls_ssl_context *ssl, mbedtls_ssl_config *conf,
+          mbedtls_ctr_drbg_context *drbg)
+{
+    mbedtls_ssl_init(ssl);
+    mbedtls_ctr_drbg_init(drbg);
+    mbedtls_ssl_config_init(conf);
+
+    if (mbedtls_ctr_drbg_seed(drbg, GetEntropy, NULL, "wow", 3) != 0) {
+        fprintf(stderr, "wow: TLS entropy seed failed\n");
+        return -1;
+    }
+    if (mbedtls_ssl_config_defaults(conf, MBEDTLS_SSL_IS_CLIENT,
+                                    MBEDTLS_SSL_TRANSPORT_STREAM,
+                                    MBEDTLS_SSL_PRESET_SUITEC) != 0) {
+        fprintf(stderr, "wow: TLS config defaults failed\n");
+        return -1;
+    }
+    mbedtls_ssl_conf_authmode(conf, MBEDTLS_SSL_VERIFY_REQUIRED);
+    mbedtls_ssl_conf_ca_chain(conf, GetSslRoots(), NULL);
+    mbedtls_ssl_conf_rng(conf, mbedtls_ctr_drbg_random, drbg);
+    
+    /* Force HTTP/1.1 via ALPN — reject HTTP/2 which has massive headers
+     * that overflow our parser buffers */
+    static const char *alpn_protos[] = {"http/1.1", NULL};
+    mbedtls_ssl_conf_alpn_protocols(conf, alpn_protos);
+    
+    if (mbedtls_ssl_setup(ssl, conf) != 0) {
+        fprintf(stderr, "wow: TLS setup failed\n");
+        return -1;
+    }
+    if (mbedtls_ssl_set_hostname(ssl, host) != 0) {
+        fprintf(stderr, "wow: TLS SNI failed for %s\n", host);
+        return -1;
+    }
+    mbedtls_ssl_set_bio(ssl, sock, tls_send, NULL, tls_recv);
+
+    int hrc = mbedtls_ssl_handshake(ssl);
+    if (hrc != 0) {
+        fprintf(stderr, "wow: TLS handshake with %s failed: %s\n",
+                host, DescribeSslClientHandshakeError(ssl, hrc));
+        return -1;
+    }
+    return 0;
+}
+
+/*
+ * Build HTTP GET request
+ * 
+ * Returns allocated request string (caller frees), or NULL on error.
+ */
+static char *
+build_http_request(const char *path, const char *host, const char *port,
+                   const char *connection)
+{
+    char *request = NULL;
+    appendf(&request,
+            "GET %s HTTP/1.1\r\n"
+            "Host: %s:%s\r\n"
+            "User-Agent: " WOW_HTTP_USER_AGENT "\r\n"
+            "Connection: %s\r\n"
+            "\r\n",
+            path, host, port, connection);
+    return request;
+}
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)
@@ -90,55 +167,15 @@ static int do_get(const char *host, const char *port, int usessl,
 
     /* TLS handshake */
     if (usessl) {
-        mbedtls_ssl_init(&ssl);
-        mbedtls_ctr_drbg_init(&drbg);
-        mbedtls_ssl_config_init(&conf);
         tls_inited = 1;
-
-        if (mbedtls_ctr_drbg_seed(&drbg, GetEntropy, NULL, "wow", 3) != 0) {
-            fprintf(stderr, "wow: TLS entropy seed failed\n");
-            goto out;
-        }
-        if (mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
-                                        MBEDTLS_SSL_TRANSPORT_STREAM,
-                                        MBEDTLS_SSL_PRESET_SUITEC) != 0) {
-            fprintf(stderr, "wow: TLS config defaults failed\n");
-            goto out;
-        }
-        mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
-        mbedtls_ssl_conf_ca_chain(&conf, GetSslRoots(), NULL);
-        mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &drbg);
-        
-        /* Force HTTP/1.1 via ALPN — reject HTTP/2 which has massive headers
-         * that overflow our parser buffers */
-        static const char *alpn_protos[] = {"http/1.1", NULL};
-        mbedtls_ssl_conf_alpn_protocols(&conf, alpn_protos);
-        if (mbedtls_ssl_setup(&ssl, &conf) != 0) {
-            fprintf(stderr, "wow: TLS setup failed\n");
-            goto out;
-        }
-        if (mbedtls_ssl_set_hostname(&ssl, host) != 0) {
-            fprintf(stderr, "wow: TLS SNI failed for %s\n", host);
-            goto out;
-        }
-        mbedtls_ssl_set_bio(&ssl, &sock, tls_send, NULL, tls_recv);
-
-        int hrc = mbedtls_ssl_handshake(&ssl);
-        if (hrc != 0) {
-            fprintf(stderr, "wow: TLS handshake with %s failed: %s\n",
-                    host, DescribeSslClientHandshakeError(&ssl, hrc));
+        if (tls_setup(&sock, host, &ssl, &conf, &drbg) != 0) {
             goto out;
         }
     }
 
     /* Build HTTP request */
-    appendf(&request,
-            "GET %s HTTP/1.1\r\n"
-            "Host: %s:%s\r\n"
-            "User-Agent: wow/" WOW_VERSION "\r\n"
-            "Connection: close\r\n"
-            "\r\n",
-            path, host, port);
+    request = build_http_request(path, host, port, "close");
+    if (!request) goto out;
 
     /* Send */
     {
@@ -508,55 +545,15 @@ static int do_get_to_fd(const char *host, const char *port, int usessl,
 
     /* TLS handshake */
     if (usessl) {
-        mbedtls_ssl_init(&ssl);
-        mbedtls_ctr_drbg_init(&drbg);
-        mbedtls_ssl_config_init(&conf);
         tls_inited = 1;
-
-        if (mbedtls_ctr_drbg_seed(&drbg, GetEntropy, NULL, "wow", 3) != 0) {
-            fprintf(stderr, "wow: TLS entropy seed failed\n");
-            goto out;
-        }
-        if (mbedtls_ssl_config_defaults(&conf, MBEDTLS_SSL_IS_CLIENT,
-                                        MBEDTLS_SSL_TRANSPORT_STREAM,
-                                        MBEDTLS_SSL_PRESET_SUITEC) != 0) {
-            fprintf(stderr, "wow: TLS config defaults failed\n");
-            goto out;
-        }
-        mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_REQUIRED);
-        mbedtls_ssl_conf_ca_chain(&conf, GetSslRoots(), NULL);
-        mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &drbg);
-        
-        /* Force HTTP/1.1 via ALPN — reject HTTP/2 which has massive headers */
-        static const char *alpn_protos_fd[] = {"http/1.1", NULL};
-        mbedtls_ssl_conf_alpn_protocols(&conf, alpn_protos_fd);
-        
-        if (mbedtls_ssl_setup(&ssl, &conf) != 0) {
-            fprintf(stderr, "wow: TLS setup failed\n");
-            goto out;
-        }
-        if (mbedtls_ssl_set_hostname(&ssl, host) != 0) {
-            fprintf(stderr, "wow: TLS SNI failed for %s\n", host);
-            goto out;
-        }
-        mbedtls_ssl_set_bio(&ssl, &sock, tls_send, NULL, tls_recv);
-
-        int hrc = mbedtls_ssl_handshake(&ssl);
-        if (hrc != 0) {
-            fprintf(stderr, "wow: TLS handshake with %s failed: %s\n",
-                    host, DescribeSslClientHandshakeError(&ssl, hrc));
+        if (tls_setup(&sock, host, &ssl, &conf, &drbg) != 0) {
             goto out;
         }
     }
 
     /* Build HTTP request */
-    appendf(&request,
-            "GET %s HTTP/1.1\r\n"
-            "Host: %s:%s\r\n"
-            "User-Agent: wow/" WOW_VERSION "\r\n"
-            "Connection: close\r\n"
-            "\r\n",
-            path, host, port);
+    request = build_http_request(path, host, port, "close");
+    if (!request) goto out;
 
     /* Send */
     {

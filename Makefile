@@ -190,6 +190,9 @@ $(BUILDDIR)/gemfile: | $(BUILDDIR)
 $(BUILDDIR)/resolver: | $(BUILDDIR)
 	mkdir -p $@
 
+$(BUILDDIR)/resolver/test: | $(BUILDDIR)/resolver
+	mkdir -p $@
+
 $(BUILDDIR)/util: | $(BUILDDIR)
 	mkdir -p $@
 
