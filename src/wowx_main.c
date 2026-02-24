@@ -12,6 +12,7 @@
  * Bundler's --standalone mode.
  */
 
+#include <cosmo.h>
 #include <dirent.h>
 #include <errno.h>
 #include <limits.h>
@@ -866,6 +867,8 @@ cleanup:
 
 int main(int argc, char *argv[])
 {
+    ShowCrashReports();
+
     if (argc < 2 || strcmp(argv[1], "--help") == 0 ||
         strcmp(argv[1], "-h") == 0) {
         print_usage();
