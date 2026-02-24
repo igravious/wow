@@ -51,11 +51,16 @@ static wow_aoff arena_strndup_off(wow_arena *a, const char *s, size_t n)
 
 /*
  * Parse a single compact index version line into a wow_ci_pkg entry.
- * Returns 0 on success, -1 to skip (platform-specific), -2 on error.
+ * Returns 0 on success, -1 to skip (platform/metadata filter), -2 on error.
+ *
+ * When ruby_ver is non-NULL, the metadata section after '|' is checked
+ * for a ruby: constraint.  If the target Ruby version doesn't satisfy
+ * it, the version is skipped (-1).
  *
  * The line has already been stripped of trailing newline.
  */
 static int parse_ci_line(wow_arena *arena, const char *line,
+                          const wow_gemver *ruby_ver,
                           wow_gemver *ver_out,
                           wow_aoff *deps_offset_out, int *n_deps_out)
 {
@@ -94,6 +99,47 @@ static int parse_ci_line(wow_arena *arena, const char *line,
     /* Find the pipe separator */
     const char *pipe = strchr(sp + 1, '|');
     if (!pipe) return -2;
+
+    /* Check ruby: metadata constraint before allocating deps.
+     * Compact index metadata after '|':
+     *   checksum:hex[,ruby:constraint][,rubygems:constraint]
+     * Multiple constraints within a key use '&' (not ',').
+     * We filter on ruby: but not rubygems: — wowx doesn't use
+     * RubyGems internals, so the rubygems constraint isn't meaningful. */
+    if (ruby_ver) {
+        const char *meta = pipe + 1;
+        const char *rm = strstr(meta, "ruby:");
+        /* Ensure key boundary — not a substring of e.g. "rubygems:" */
+        while (rm && rm != meta && *(rm - 1) != ',')
+            rm = strstr(rm + 1, "ruby:");
+
+        if (rm) {
+            const char *val = rm + 5;  /* past "ruby:" */
+            const char *end = strchr(val, ',');
+            size_t rlen = end ? (size_t)(end - val) : strlen(val);
+
+            /* Convert & to , for constraint parsing */
+            char cbuf[128];
+            if (rlen < sizeof(cbuf)) {
+                char *wp = cbuf;
+                for (size_t i = 0; i < rlen; i++) {
+                    if (val[i] == '&') {
+                        *wp++ = ',';
+                        *wp++ = ' ';
+                    } else {
+                        *wp++ = val[i];
+                    }
+                }
+                *wp = '\0';
+
+                wow_gem_constraints rc;
+                if (wow_gem_constraints_parse(cbuf, &rc) == 0) {
+                    if (!wow_gemver_match(&rc, ruby_ver))
+                        return -1;  /* Ruby version incompatible */
+                }
+            }
+        }
+    }
 
     /* Parse deps between sp+1 and pipe */
     const char *deps_start = sp + 1;
@@ -162,13 +208,15 @@ static int parse_ci_line(wow_arena *arena, const char *line,
                 continue;
             }
 
-            /* Re-fetch again — constraint parse may have touched arena
-             * (it shouldn't, but belt-and-braces) */
-            deps = WOW_ARENA_PTR(arena, deps_off, struct wow_ci_dep);
+            /* Store dep name — arena_strndup_off may grow the arena
+             * (realloc), so we must NOT use the deps pointer until
+             * we re-fetch it AFTER the allocation. */
+            wow_aoff name_off = arena_strndup_off(arena, dep_name,
+                                                    strlen(dep_name));
 
-            /* Store name as offset */
-            deps[n].name = arena_strndup_off(arena, dep_name,
-                                              strlen(dep_name));
+            /* Re-fetch deps — arena may have grown during strndup */
+            deps = WOW_ARENA_PTR(arena, deps_off, struct wow_ci_dep);
+            deps[n].name = name_off;
             n++;
         }
 
@@ -252,6 +300,45 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
         return NULL;
     }
 
+    /* DEBUG: dump body stats + null-termination check */
+    if (getenv("WOW_DEBUG_RESOLVE")) {
+        fprintf(stderr, "[provider] %s: resp.body_len=%zu\n", name, resp.body_len);
+        /* Check if body is null-terminated */
+        int has_nul = (resp.body_len > 0 && resp.body[resp.body_len] == '\0');
+        int has_nul_within = 0;
+        for (size_t di = 0; di < resp.body_len; di++) {
+            if (resp.body[di] == '\0') { has_nul_within = 1; break; }
+        }
+        fprintf(stderr, "[provider] %s: nul at body[body_len]=%s, "
+                "nul within body=%s\n", name,
+                has_nul ? "YES" : "NO (BUG: not null-terminated!)",
+                has_nul_within ? "YES" : "no");
+        /* Show last 100 bytes of body to see where parsing would end */
+        if (resp.body_len > 50) {
+            fprintf(stderr, "[provider] %s: last 100 bytes of body:\n",
+                    name);
+            size_t start = resp.body_len > 100 ? resp.body_len - 100
+                                                : 0;
+            for (size_t di = start; di < resp.body_len; di++) {
+                char c = resp.body[di];
+                if (c >= 32 && c < 127) fputc(c, stderr);
+                else if (c == '\n') fputc('\n', stderr);
+                else fprintf(stderr, "\\x%02x", (unsigned char)c);
+            }
+            fprintf(stderr, "\n");
+            /* Show what's PAST the body (heap garbage) */
+            fprintf(stderr, "[provider] %s: 50 bytes PAST body_len:\n",
+                    name);
+            for (size_t di = 0; di < 50; di++) {
+                char c = resp.body[resp.body_len + di];
+                if (c >= 32 && c < 127) fputc(c, stderr);
+                else if (c == '\n') fprintf(stderr, "\\n");
+                else fprintf(stderr, "\\x%02x", (unsigned char)c);
+            }
+            fprintf(stderr, "\n[provider] --- end body debug ---\n");
+        }
+    }
+
     /* Walk lines: skip everything before "---" header */
     bool past_header = false;
     char *body = resp.body;
@@ -283,8 +370,9 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
         wow_gemver ver;
         wow_aoff deps_offset = WOW_AOFF_NULL;
         int n_deps = 0;
-        int prc = parse_ci_line(&prov->arena, line, &ver,
-                                 &deps_offset, &n_deps);
+        int prc = parse_ci_line(&prov->arena, line,
+                                 prov->has_ruby_ver ? &prov->ruby_ver : NULL,
+                                 &ver, &deps_offset, &n_deps);
 
         if (prc == 0) {
             /* Grow arrays if needed */
@@ -305,6 +393,16 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
             vers[n_ver] = ver;
             vdeps[n_ver].deps_offset = deps_offset;
             vdeps[n_ver].n_deps = n_deps;
+
+            /* DEBUG: flag any version with first segment >= 10 (suspicious) */
+            if (getenv("WOW_DEBUG_RESOLVE") &&
+                ver.n_segs > 0 && !ver.segs[0].is_str && ver.segs[0].num >= 10) {
+                fprintf(stderr, "[provider] SUSPICIOUS parsed ver[%d] raw=\"%s\" "
+                        "segs[0]=%d n_segs=%d n_deps=%d from line: \"%s\"\n",
+                        n_ver, ver.raw, ver.segs[0].num, ver.n_segs,
+                        n_deps, line);
+            }
+
             n_ver++;
         }
         /* prc == -1: skip (platform-specific), prc == -2: parse error */
@@ -313,6 +411,25 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
     }
 
     wow_response_free(&resp);
+
+    /* DEBUG: dump pre-sort version list for the package */
+    if (getenv("WOW_DEBUG_RESOLVE")) {
+        fprintf(stderr, "[provider] %s: %d versions parsed (pre-sort), "
+                "first 5 + last 5:\n", name, n_ver);
+        for (int i = 0; i < n_ver && i < 5; i++)
+            fprintf(stderr, "[provider]   pre[%d] raw=\"%s\" seg0=%d\n",
+                    i, vers[i].raw,
+                    (vers[i].n_segs > 0 && !vers[i].segs[0].is_str)
+                        ? vers[i].segs[0].num : -1);
+        if (n_ver > 10) fprintf(stderr, "[provider]   ...\n");
+        for (int i = (n_ver > 5 ? n_ver - 5 : 0); i < n_ver; i++) {
+            if (i < 5) continue;  /* already printed */
+            fprintf(stderr, "[provider]   pre[%d] raw=\"%s\" seg0=%d\n",
+                    i, vers[i].raw,
+                    (vers[i].n_segs > 0 && !vers[i].segs[0].is_str)
+                        ? vers[i].segs[0].num : -1);
+        }
+    }
 
     /* Sort versions newest-first */
     /* We also need to keep ver_deps in sync — build index array */
@@ -335,6 +452,14 @@ static struct wow_ci_pkg *fetch_package(wow_ci_provider *prov,
                 j--;
             }
             idx[j + 1] = key;
+        }
+
+        /* DEBUG: post-sort — check if top version matches pre-sort expectation */
+        if (getenv("WOW_DEBUG_RESOLVE")) {
+            fprintf(stderr, "[provider] %s: post-sort top5 (idx→orig):\n", name);
+            for (int i = 0; i < n_ver && i < 5; i++)
+                fprintf(stderr, "[provider]   sorted[%d] idx=%d raw=\"%s\"\n",
+                        i, idx[i], vers[idx[i]].raw);
         }
 
         /* Copy to arena in sorted order */
@@ -403,6 +528,17 @@ static int ci_list_versions(void *ctx, const char *package,
     /* Compute pointer from offset — safe across arena growth */
     *out = P_PTR(pkg->versions_offset, const wow_gemver);
     *n_out = pkg->n_versions;
+
+    if (getenv("WOW_DEBUG_RESOLVE")) {
+        fprintf(stderr, "[provider] list_versions(%s): n=%d, "
+                "offset=%u, arena.buf=%p, ptr=%p\n",
+                package, *n_out, (unsigned)pkg->versions_offset,
+                (void *)prov->arena.buf, (const void *)*out);
+        for (int i = 0; i < *n_out && i < 5; i++)
+            fprintf(stderr, "[provider]   [%d] raw=\"%s\"\n",
+                    i, (*out)[i].raw);
+    }
+
     return 0;
 }
 
@@ -469,7 +605,8 @@ static int ci_get_deps(void *ctx, const char *package,
 /* ------------------------------------------------------------------ */
 
 void wow_ci_provider_init(wow_ci_provider *p, const char *source_url,
-                           struct wow_http_pool *pool)
+                           struct wow_http_pool *pool,
+                           const char *ruby_version)
 {
     memset(p, 0, sizeof(*p));
     wow_arena_init(&p->arena);
@@ -480,6 +617,10 @@ void wow_ci_provider_init(wow_ci_provider *p, const char *source_url,
         slen--;
     p->source_url = arena_strndup_off(&p->arena, source_url, slen);
     p->pool = pool;
+
+    /* Parse target Ruby version for metadata filtering */
+    if (ruby_version && wow_gemver_parse(ruby_version, &p->ruby_ver) == 0)
+        p->has_ruby_ver = true;
 }
 
 wow_provider wow_ci_provider_as_provider(wow_ci_provider *p)

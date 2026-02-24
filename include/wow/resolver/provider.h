@@ -54,18 +54,28 @@ typedef struct {
     wow_arena          arena;
     wow_aoff           source_url;   /* offset to "https://rubygems.org" */
 
+    /* Target Ruby version for metadata filtering.
+     * When has_ruby_ver is true, versions whose compact index ruby:
+     * constraint is not satisfied are excluded during parsing. */
+    wow_gemver         ruby_ver;
+    bool               has_ruby_ver;
+
     /* Connection pool for HTTP Keep-Alive */
     struct wow_http_pool *pool;
 } wow_ci_provider;
 
 /*
  * Initialise a compact index provider.
- * source_url: gem source (e.g. "https://rubygems.org").
- * pool:       HTTP connection pool (caller-owned, must outlive provider).
- *             Pass NULL to use individual connections (slower).
+ * source_url:    gem source (e.g. "https://rubygems.org").
+ * pool:          HTTP connection pool (caller-owned, must outlive provider).
+ *                Pass NULL to use individual connections (slower).
+ * ruby_version:  target Ruby version string (e.g. "3.4.8") for filtering
+ *                versions by compact index ruby: metadata.  Pass NULL to
+ *                disable metadata filtering.
  */
 void wow_ci_provider_init(wow_ci_provider *p, const char *source_url,
-                           struct wow_http_pool *pool);
+                           struct wow_http_pool *pool,
+                           const char *ruby_version);
 
 /*
  * Build a wow_provider struct pointing at this compact index provider.

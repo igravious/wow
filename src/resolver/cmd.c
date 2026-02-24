@@ -598,7 +598,7 @@ int cmd_resolve(int argc, char *argv[])
     wow_http_pool_init(&pool, 4);
 
     wow_ci_provider ci;
-    wow_ci_provider_init(&ci, "https://rubygems.org", &pool);
+    wow_ci_provider_init(&ci, "https://rubygems.org", &pool, NULL);
 
     wow_provider prov = wow_ci_provider_as_provider(&ci);
     wow_solver solver;
@@ -713,7 +713,7 @@ int cmd_lock(int argc, char *argv[])
     wow_http_pool_init(&pool, 4);
 
     wow_ci_provider ci;
-    wow_ci_provider_init(&ci, source, &pool);
+    wow_ci_provider_init(&ci, source, &pool, NULL);
 
     wow_provider prov = wow_ci_provider_as_provider(&ci);
     wow_solver solver;

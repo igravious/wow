@@ -15,6 +15,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Debug output gated on WOW_DEBUG_RESOLVE=1 env var */
+static int dbg_resolve = -1;
+#define DBG(...) do { \
+    if (dbg_resolve < 0) dbg_resolve = (getenv("WOW_DEBUG_RESOLVE") != NULL); \
+    if (dbg_resolve) fprintf(stderr, "[resolve] " __VA_ARGS__); \
+} while (0)
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
@@ -789,6 +796,12 @@ static const wow_gemver *choose_version(wow_solver *s, wow_aoff pkg_off)
                                     &versions, &n_ver) != 0)
         return NULL;
 
+    DBG("choose_version(%s): %d versions available, top3:",
+        pkg, n_ver);
+    for (int _i = 0; _i < n_ver && _i < 3; _i++)
+        DBG("  [%d]=%s", _i, versions[_i].raw);
+    DBG("\n");
+
     /* Compute positive range and collect negative exclusions */
     wow_ver_range pos_range = WOW_RANGE_ANY;
     wow_ver_range neg_ranges[16];
@@ -827,8 +840,11 @@ static const wow_gemver *choose_version(wow_solver *s, wow_aoff pkg_off)
                 break;
             }
         }
-        if (!excluded)
+        if (!excluded) {
+            DBG("choose_version(%s): picked %s (idx %d)\n",
+                pkg, versions[v].raw, v);
             return &versions[v];
+        }
     }
 
     return NULL;
@@ -1084,6 +1100,10 @@ int wow_solve(wow_solver *s,
             continue;
         }
 
+        DBG("DECIDE: %s = %s (raw ptr=%p, arena.buf=%p)\n",
+            A_STR(next_pkg), chosen->raw, (const void *)chosen,
+            (const void *)s->arena.buf);
+
         /* Make a decision */
         s->decision_level++;
         wow_assignment decision;
@@ -1110,6 +1130,11 @@ int wow_solve(wow_solver *s,
             return -1;
         }
 
+        DBG("  get_deps returned %d deps, chosen->raw now = \"%s\" "
+            "(ptr=%p, arena.buf=%p)\n",
+            n_deps, chosen->raw, (const void *)chosen,
+            (const void *)s->arena.buf);
+
         for (int d = 0; d < n_deps; d++) {
             wow_ver_range dep_range = range_from_constraints(&dep_cs[d]);
 
@@ -1133,6 +1158,11 @@ int wow_solve(wow_solver *s,
             wow_incomp *dep_ic = A_PTR(dep_ic_off, wow_incomp);
             dep_ic->dep_package = next_pkg;  /* reuse existing offset */
             dep_ic->dep_version = *chosen;
+
+            DBG("  dep[%d]: %s, chosen->raw=\"%s\" (ptr=%p, arena.buf=%p)\n",
+                d, dep_names[d], chosen->raw, (const void *)chosen,
+                (const void *)s->arena.buf);
+
             push_incomp(s, dep_ic_off);
         }
     }
@@ -1155,6 +1185,9 @@ int wow_solve(wow_solver *s,
             !streq(A_STR(s->assignments[a].package), ROOT_PKG)) {
             s->solution[idx].name = A_STR(s->assignments[a].package);
             s->solution[idx].version = s->assignments[a].version;
+            DBG("SOLUTION[%d]: %s = %s\n", idx,
+                s->solution[idx].name,
+                s->solution[idx].version.raw);
             idx++;
         }
     }
