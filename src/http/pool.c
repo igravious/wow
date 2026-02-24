@@ -9,19 +9,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "libc/calls/calls.h"
-#include "libc/calls/struct/timeval.h"
 #include "libc/mem/mem.h"
-#include "libc/sock/goodsocket.internal.h"
 #include "libc/sock/sock.h"
 #include "libc/stdio/append.h"
 #include "libc/str/slice.h"
 #include "libc/str/str.h"
-#include "libc/sysv/consts/af.h"
-#include "libc/sysv/consts/ipproto.h"
 #include "libc/sysv/consts/msg.h"
-#include "libc/sysv/consts/sock.h"
 #include "net/http/http.h"
 #include "net/http/url.h"
 #include "net/https/https.h"
@@ -30,11 +26,14 @@
 #include "third_party/mbedtls/iana.h"
 #include "third_party/mbedtls/net_sockets.h"
 #include "third_party/mbedtls/ssl.h"
-#include "third_party/musl/netdb.h"
 
 #include "wow/http/client.h"
 #include "wow/http/pool.h"
+#include "wow/http/proxy.h"
 #include "wow/version.h"
+
+/* 429 retry/backoff: max 3 retries with exponential backoff (1s, 2s, 4s) */
+#define WOW_HTTP_MAX_RETRIES 3
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)
@@ -151,27 +150,12 @@ static int pool_acquire(struct wow_http_pool *p, const char *host,
 
     struct wow_pool_entry *e = &p->entries[slot];
 
-    /* DNS + connect */
-    struct addrinfo hints = {
-        .ai_family   = AF_UNSPEC,
-        .ai_socktype = SOCK_STREAM,
-        .ai_protocol = IPPROTO_TCP,
-        .ai_flags    = AI_NUMERICSERV
-    };
-    struct addrinfo *addr;
-    if (getaddrinfo(host, port, &hints, &addr) != 0) {
-        fprintf(stderr, "wow: pool: could not resolve %s\n", host);
+    /* Connect (direct or through proxy) */
+    e->sock = wow_http_connect(host, port, usessl);
+    if (e->sock < 0) {
+        e->sock = -1;
         return -1;
     }
-    e->sock = GoodSocket(addr->ai_family, addr->ai_socktype, addr->ai_protocol,
-                         false, &(struct timeval){-WOW_HTTP_TIMEOUT_SECS, 0});
-    if (e->sock == -1 || connect(e->sock, addr->ai_addr, addr->ai_addrlen) != 0) {
-        fprintf(stderr, "wow: pool: connect to %s:%s failed\n", host, port);
-        freeaddrinfo(addr);
-        if (e->sock >= 0) { close(e->sock); e->sock = -1; }
-        return -1;
-    }
-    freeaddrinfo(addr);
 
     /* TLS */
     if (usessl) {
@@ -415,6 +399,11 @@ static int pool_do_get(struct wow_pool_entry *e, const char *path,
     }
 
 done:
+    /* Null-terminate body — callers may treat it as a C string */
+    if (body) {
+        char *tmp = realloc(body, bodylen + 1);
+        if (tmp) { body = tmp; body[bodylen] = '\0'; }
+    }
     resp->status       = msg.status;
     resp->body         = body;
     resp->body_len     = bodylen;
@@ -494,20 +483,31 @@ int wow_http_pool_get(struct wow_http_pool *p, const char *url,
         free(urlmem);
         free(parsed.params.p);
 
-        int slot = pool_acquire(p, host, port, usessl);
-        if (slot == -1) {
-            free(host);
-            free(port);
-            free(pathstr);
-            free(current_url);
-            return -1;
-        }
-
         struct wow_response single;
-        memset(&single, 0, sizeof(single));
-        int keep_alive = 0;
-        int rc = pool_do_get(&p->entries[slot], pathstr, &single, &keep_alive);
-        pool_release(p, slot, keep_alive && rc == 0);
+        int rc;
+        for (int retry = 0; ; retry++) {
+            int slot = pool_acquire(p, host, port, usessl);
+            if (slot == -1) {
+                free(host);
+                free(port);
+                free(pathstr);
+                free(current_url);
+                return -1;
+            }
+
+            memset(&single, 0, sizeof(single));
+            int keep_alive = 0;
+            rc = pool_do_get(&p->entries[slot], pathstr, &single, &keep_alive);
+            pool_release(p, slot, keep_alive && rc == 0);
+
+            if (rc != 0 || single.status != 429) break;
+            if (retry >= WOW_HTTP_MAX_RETRIES) break;
+            unsigned delay = 1u << retry;  /* 1s, 2s, 4s */
+            fprintf(stderr, "wow: rate limited (429), retrying in %us...\n",
+                    delay);
+            wow_response_free(&single);
+            sleep(delay);
+        }
 
         free(host);
         free(port);

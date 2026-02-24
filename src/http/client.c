@@ -2,18 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "libc/calls/calls.h"
-#include "libc/calls/struct/timeval.h"
 #include "libc/mem/mem.h"
-#include "libc/sock/goodsocket.internal.h"
-#include "libc/sock/sock.h"
 #include "libc/stdio/append.h"
 #include "libc/str/slice.h"
 #include "libc/str/str.h"
-#include "libc/sysv/consts/af.h"
-#include "libc/sysv/consts/ipproto.h"
-#include "libc/sysv/consts/sock.h"
 #include "net/http/http.h"
 #include "net/http/url.h"
 #include "net/https/https.h"
@@ -22,13 +17,16 @@
 #include "third_party/mbedtls/iana.h"
 #include "third_party/mbedtls/net_sockets.h"
 #include "third_party/mbedtls/ssl.h"
-#include "third_party/musl/netdb.h"
 
 #include "wow/http/client.h"
+#include "wow/http/proxy.h"
 #include "wow/version.h"
 
 /* Global verbose flag for HTTP debugging (set by --verbose or -v) */
 int wow_http_debug = 0;
+
+/* 429 retry/backoff: max 3 retries with exponential backoff (1s, 2s, 4s) */
+#define WOW_HTTP_MAX_RETRIES 3
 
 #define HasHeader(H)    (!!msg.headers[H].a)
 #define HeaderData(H)   (raw + msg.headers[H].a)
@@ -78,7 +76,6 @@ static int do_get(const char *host, const char *port, int usessl,
     int sock = -1;
     char *request = NULL;
     char *raw = NULL;
-    struct addrinfo *addr = NULL;
     struct HttpMessage msg;
     int msg_inited = 0;
 
@@ -87,31 +84,9 @@ static int do_get(const char *host, const char *port, int usessl,
     mbedtls_ctr_drbg_context drbg;
     int tls_inited = 0;
 
-    /* DNS resolution */
-    struct addrinfo hints = {
-        .ai_family   = AF_UNSPEC,
-        .ai_socktype = SOCK_STREAM,
-        .ai_protocol = IPPROTO_TCP,
-        .ai_flags    = AI_NUMERICSERV
-    };
-    if (getaddrinfo(host, port, &hints, &addr) != 0) {
-        fprintf(stderr, "wow: could not resolve host: %s\n", host);
-        goto out;
-    }
-
-    /* Connect with timeout */
-    sock = GoodSocket(addr->ai_family, addr->ai_socktype, addr->ai_protocol,
-                      false, &(struct timeval){-WOW_HTTP_TIMEOUT_SECS, 0});
-    if (sock == -1) {
-        fprintf(stderr, "wow: socket creation failed\n");
-        goto out;
-    }
-    if (connect(sock, addr->ai_addr, addr->ai_addrlen) != 0) {
-        fprintf(stderr, "wow: failed to connect to %s:%s\n", host, port);
-        goto out;
-    }
-    freeaddrinfo(addr);
-    addr = NULL;
+    /* Connect (direct or through proxy) */
+    sock = wow_http_connect(host, port, usessl);
+    if (sock < 0) goto out;
 
     /* TLS handshake */
     if (usessl) {
@@ -383,6 +358,11 @@ static int do_get(const char *host, const char *port, int usessl,
     }
 
 done:
+    /* Null-terminate body — callers may treat it as a C string */
+    if (body) {
+        char *tmp = realloc(body, bodylen + 1);
+        if (tmp) { body = tmp; body[bodylen] = '\0'; }
+    }
     resp->status       = msg.status;
     resp->body         = body;
     resp->body_len     = bodylen;
@@ -398,7 +378,6 @@ cleanup:
     if (msg_inited) DestroyHttpMessage(&msg);
     free(raw);
     free(request);
-    if (addr) freeaddrinfo(addr);
     if (tls_inited) {
         mbedtls_ssl_free(&ssl);
         mbedtls_ctr_drbg_free(&drbg);
@@ -411,7 +390,6 @@ out:
     /* Early failure before msg/body are live */
     free(request);
     free(raw);
-    if (addr) freeaddrinfo(addr);
     if (tls_inited) {
         mbedtls_ssl_free(&ssl);
         mbedtls_ctr_drbg_free(&drbg);
@@ -516,7 +494,6 @@ static int do_get_to_fd(const char *host, const char *port, int usessl,
     int sock = -1;
     char *request = NULL;
     char *raw = NULL;
-    struct addrinfo *addr = NULL;
     struct HttpMessage msg;
     int msg_inited = 0;
 
@@ -525,31 +502,9 @@ static int do_get_to_fd(const char *host, const char *port, int usessl,
     mbedtls_ctr_drbg_context drbg;
     int tls_inited = 0;
 
-    /* DNS resolution */
-    struct addrinfo hints = {
-        .ai_family   = AF_UNSPEC,
-        .ai_socktype = SOCK_STREAM,
-        .ai_protocol = IPPROTO_TCP,
-        .ai_flags    = AI_NUMERICSERV
-    };
-    if (getaddrinfo(host, port, &hints, &addr) != 0) {
-        fprintf(stderr, "wow: could not resolve host: %s\n", host);
-        goto out;
-    }
-
-    /* Connect with timeout */
-    sock = GoodSocket(addr->ai_family, addr->ai_socktype, addr->ai_protocol,
-                      false, &(struct timeval){-WOW_HTTP_TIMEOUT_SECS, 0});
-    if (sock == -1) {
-        fprintf(stderr, "wow: socket creation failed\n");
-        goto out;
-    }
-    if (connect(sock, addr->ai_addr, addr->ai_addrlen) != 0) {
-        fprintf(stderr, "wow: failed to connect to %s:%s\n", host, port);
-        goto out;
-    }
-    freeaddrinfo(addr);
-    addr = NULL;
+    /* Connect (direct or through proxy) */
+    sock = wow_http_connect(host, port, usessl);
+    if (sock < 0) goto out;
 
     /* TLS handshake */
     if (usessl) {
@@ -839,7 +794,6 @@ cleanup_fd:
     if (msg_inited) DestroyHttpMessage(&msg);
     free(raw);
     free(request);
-    if (addr) freeaddrinfo(addr);
     if (tls_inited) {
         mbedtls_ssl_free(&ssl);
         mbedtls_ctr_drbg_free(&drbg);
@@ -851,7 +805,6 @@ cleanup_fd:
 out:
     free(request);
     free(raw);
-    if (addr) freeaddrinfo(addr);
     if (tls_inited) {
         mbedtls_ssl_free(&ssl);
         mbedtls_ctr_drbg_free(&drbg);
@@ -888,8 +841,18 @@ int wow_http_get(const char *url, struct wow_response *resp) {
         was_https = req.usessl;
 
         struct wow_response single;
-        memset(&single, 0, sizeof(single));
-        int rc = do_get(req.host, req.port, req.usessl, req.path, &single);
+        int rc;
+        for (int retry = 0; ; retry++) {
+            memset(&single, 0, sizeof(single));
+            rc = do_get(req.host, req.port, req.usessl, req.path, &single);
+            if (rc != 0 || single.status != 429) break;
+            if (retry >= WOW_HTTP_MAX_RETRIES) break;
+            unsigned delay = 1u << retry;  /* 1s, 2s, 4s */
+            fprintf(stderr, "wow: rate limited (429), retrying in %us...\n",
+                    delay);
+            wow_response_free(&single);
+            sleep(delay);
+        }
         free_parsed_request(&req);
 
         if (rc != 0) {
@@ -951,9 +914,19 @@ int wow_http_download_to_fd(const char *url, int fd,
         was_https = req.usessl;
 
         struct wow_response resp;
-        memset(&resp, 0, sizeof(resp));
-        int rc = do_get_to_fd(req.host, req.port, req.usessl, req.path,
+        int rc;
+        for (int retry = 0; ; retry++) {
+            memset(&resp, 0, sizeof(resp));
+            rc = do_get_to_fd(req.host, req.port, req.usessl, req.path,
                               &resp, fd, progress, progress_ctx);
+            if (rc != 0 || resp.status != 429) break;
+            if (retry >= WOW_HTTP_MAX_RETRIES) break;
+            unsigned delay = 1u << retry;  /* 1s, 2s, 4s */
+            fprintf(stderr, "wow: rate limited (429), retrying in %us...\n",
+                    delay);
+            wow_response_free(&resp);
+            sleep(delay);
+        }
         free_parsed_request(&req);
 
         if (rc != 0) {

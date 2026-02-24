@@ -8,5 +8,6 @@
 
 #include "wow/http/client.h"
 #include "wow/http/pool.h"
+#include "wow/http/proxy.h"
 
 #endif
