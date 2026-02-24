@@ -129,9 +129,10 @@ int wow_parallel_download(const wow_download_spec_t *specs,
     wow_multibar_init(&mb, n_workers, n);
 
     /*
-     * In fixed mode, pre-set names.  In worker mode, names are
-     * set dynamically via wow_multibar_reset() as workers pick up jobs.
+     * In fixed mode (n_workers == n), pre-set names.
+     * In worker mode, names are set dynamically via wow_multibar_reset().
      */
+    /* cppcheck-suppress knownConditionTrueFalse */
     if (n_workers == n) {
         for (int i = 0; i < n; i++)
             wow_multibar_set_name(&mb, i, specs[i].label);

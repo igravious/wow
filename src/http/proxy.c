@@ -56,6 +56,7 @@ static int is_no_proxy(const char *target_host) {
         while (etrim > p && etrim[-1] == ' ') etrim--;
 
         size_t elen = (size_t)(etrim - p);
+        /* cppcheck-suppress knownConditionTrueFalse - elen can be 0 for whitespace-only entries */
         if (elen == 0) { p = end; continue; }
 
         /* "*" bypasses everything */

@@ -58,65 +58,69 @@ wow_find_gem_binary(const char *env_dir, const char *gem_name,
     char gems_dir[WOW_OS_PATH_MAX];
     snprintf(gems_dir, sizeof(gems_dir), "%s/gems", env);
 
-    /* Pass 1: directories matching gem_name */
-    DIR *dir = opendir(gems_dir);
-    if (!dir) return -1;
-
-    size_t nlen = strlen(gem_name);
+    size_t nlen = gem_name ? strlen(gem_name) : 0;
     struct dirent *ent;
 
-    while ((ent = readdir(dir)) != NULL) {
-        if (ent->d_name[0] == '.') continue;
-        if (strncmp(ent->d_name, gem_name, nlen) != 0) continue;
-        if (ent->d_name[nlen] != '-') continue;
+    /* Pass 1: directories matching gem_name (skipped if gem_name is NULL) */
+    if (gem_name) {
+        DIR *dir = opendir(gems_dir);
+        if (!dir) return -1;
 
-        /* Try direct lookup with given binary_name */
-        if (try_binary_in_gem(gems_dir, ent->d_name, binary_name,
-                              exe_path, exe_path_sz) == 0) {
-            closedir(dir);
-            return 0;
-        }
+        while ((ent = readdir(dir)) != NULL) {
+            if (ent->d_name[0] == '.') continue;
+            if (strncmp(ent->d_name, gem_name, nlen) != 0) continue;
+            if (ent->d_name[nlen] != '-') continue;
 
-        /* Fall back to .executables marker from gemspec */
-        char entry[128];
-        if (strlen(ent->d_name) >= sizeof(entry))
-            continue;
-        strcpy(entry, ent->d_name);
-
-        char exe_marker[WOW_OS_PATH_MAX];
-        snprintf(exe_marker, sizeof(exe_marker),
-                 "%s/gems/%s/.executables", env, entry);
-
-        FILE *f = fopen(exe_marker, "r");
-        if (f) {
-            char line[256];
-            while (fgets(line, sizeof(line), f)) {
-                char *nl = strchr(line, '\n');
-                if (nl) *nl = '\0';
-                if (!line[0] || strcmp(line, binary_name) == 0)
-                    continue;
-
-                if (try_binary_in_gem(gems_dir, ent->d_name, line,
-                                      exe_path, exe_path_sz) == 0) {
-                    fclose(f);
-                    closedir(dir);
-                    return 0;
-                }
+            /* Try direct lookup with given binary_name */
+            if (try_binary_in_gem(gems_dir, ent->d_name, binary_name,
+                                  exe_path, exe_path_sz) == 0) {
+                closedir(dir);
+                return 0;
             }
-            fclose(f);
+
+            /* Fall back to .executables marker from gemspec */
+            char entry[128];
+            if (strlen(ent->d_name) >= sizeof(entry))
+                continue;
+            strcpy(entry, ent->d_name);
+
+            char exe_marker[WOW_OS_PATH_MAX];
+            snprintf(exe_marker, sizeof(exe_marker),
+                     "%s/gems/%s/.executables", env, entry);
+
+            FILE *f = fopen(exe_marker, "r");
+            if (f) {
+                char line[256];
+                while (fgets(line, sizeof(line), f)) {
+                    char *nl = strchr(line, '\n');
+                    if (nl) *nl = '\0';
+                    if (!line[0] || strcmp(line, binary_name) == 0)
+                        continue;
+
+                    if (try_binary_in_gem(gems_dir, ent->d_name, line,
+                                          exe_path, exe_path_sz) == 0) {
+                        fclose(f);
+                        closedir(dir);
+                        return 0;
+                    }
+                }
+                fclose(f);
+            }
         }
+        closedir(dir);
     }
-    closedir(dir);
 
     /* Pass 2: search ALL gem directories (meta-gem support).
-     * e.g. `rails` gem has no binary — it's in `railties`. */
-    dir = opendir(gems_dir);
+     * e.g. `rails` gem has no binary — it's in `railties`.
+     * Also used when gem_name is NULL to search all gems. */
+    DIR *dir = opendir(gems_dir);
     if (!dir) return -1;
 
     while ((ent = readdir(dir)) != NULL) {
         if (ent->d_name[0] == '.') continue;
         /* Skip dirs already checked in pass 1 */
-        if (strncmp(ent->d_name, gem_name, nlen) == 0 &&
+        if (gem_name &&
+            strncmp(ent->d_name, gem_name, nlen) == 0 &&
             ent->d_name[nlen] == '-')
             continue;
 

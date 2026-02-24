@@ -1,3 +1,4 @@
+#include <cosmo.h>
 #include <errno.h>
 #include <limits.h>
 
@@ -17,6 +18,9 @@
 #include "wow/gemfile.h"
 #include "wow/resolver.h"
 #include "wow/sync.h"
+#include "wow/exec.h"
+#include "wow/rubies/resolve.h"
+#include "wow/defaults.h"
 
 /* External verbose flag from http.c */
 extern int wow_http_debug;
@@ -29,6 +33,62 @@ static int cmd_stub(int argc, char *argv[]) {
     (void)argc;
     printf("wow %s: not yet implemented\n", argv[0]);
     return 1;
+}
+
+/*
+ * wow run <command> [args...]
+ *
+ * Run a command from the vendor/bundle gem environment.
+ * Uses the Ruby version from .ruby-version (or default).
+ */
+static int cmd_run(int argc, char *argv[])
+{
+    if (argc < 2) {
+        fprintf(stderr, "usage: wow run <command> [args...]\n");
+        return 1;
+    }
+
+    const char *binary_name = argv[1];
+    int user_argc = argc - 2;
+    char **user_argv = argv + 2;
+
+    /* ---- 1. Find Ruby version ---- */
+    char ruby_full[32];
+    if (wow_find_ruby_version(ruby_full, sizeof(ruby_full)) != 0) {
+        /* Fall back to default Ruby version */
+        strncpy(ruby_full, WOW_DEFAULT_RUBY_VERSION, sizeof(ruby_full) - 1);
+        ruby_full[sizeof(ruby_full) - 1] = '\0';
+    }
+
+    char ruby_api[16];
+    wow_ruby_api_version(ruby_full, ruby_api, sizeof(ruby_api));
+
+    /* ---- 2. Find Ruby binary ---- */
+    char ruby_bin[WOW_OS_PATH_MAX];
+    if (wow_ruby_bin_path(ruby_full, ruby_bin, sizeof(ruby_bin)) != 0) {
+        fprintf(stderr, "wow run: Ruby %s not installed (run 'wow rubies install %s')\n",
+                ruby_full, ruby_full);
+        return 1;
+    }
+
+    /* ---- 3. Build vendor bundle environment path ---- */
+    char env_dir[WOW_OS_PATH_MAX];
+    snprintf(env_dir, sizeof(env_dir),
+             "vendor/bundle/ruby/%s", ruby_api);
+
+    /* ---- 4. Find the binary in vendor bundle ---- */
+    char exe_path[WOW_OS_PATH_MAX];
+    if (wow_find_gem_binary(env_dir, NULL, binary_name,
+                            exe_path, sizeof(exe_path)) != 0) {
+        fprintf(stderr, "wow run: command '%s' not found in vendor/bundle\n",
+                binary_name);
+        fprintf(stderr, "  (Did you run 'wow sync' first?)\n");
+        return 1;
+    }
+
+    /* ---- 5. Exec the binary with proper environment ---- */
+    return wow_exec_gem_binary(ruby_bin, ruby_api, env_dir, exe_path,
+                               user_argc, user_argv);
 }
 
 static int cmd_bundle(int argc, char *argv[]) {
@@ -187,7 +247,7 @@ static const struct {
     { "resolve", "Resolve gem dependencies",       cmd_resolve },
     { "add",    "Add a gem to Gemfile",           cmd_stub },
     { "remove", "Remove a gem from Gemfile",      cmd_stub },
-    { "run",    "Run a command with bundled gems", cmd_stub },
+    { "run",    "Run a command with bundled gems", cmd_run },
     { "rubies", "Manage Ruby installations",      cmd_ruby },
     { "bundle", "Bundler compatibility shim",     cmd_bundle },
     { "curl",   "Fetch a URL (HTTP client)",      cmd_fetch },
@@ -230,6 +290,8 @@ static void print_usage(void) {
 }
 
 int main(int argc, char *argv[]) {
+    ShowCrashReports();
+
     /*
      * Shim dispatch: if invoked as "ruby", "irb", etc. via symlink
      * or hard link, find .ruby-version and exec the managed Ruby binary.

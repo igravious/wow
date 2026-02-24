@@ -134,6 +134,7 @@ wow_exec_gem_binary(const char *ruby_bin, const char *ruby_api,
                 while (*line) {
                     char *nl = strchr(line, '\n');
                     if (nl) *nl = '\0';
+                    /* cppcheck-suppress knownConditionTrueFalse - defensive check for empty lines */
                     if (*line) {
                         char rp_line[64];
                         snprintf(rp_line, sizeof(rp_line), "%s", line);
