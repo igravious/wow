@@ -37,6 +37,7 @@ SRCS_ALL = $(wildcard src/*.c) \
            $(wildcard src/gems/*.c) \
            $(wildcard src/gemfile/*.c) \
            $(wildcard src/resolver/*.c) \
+           $(wildcard src/exec/*.c) \
            $(wildcard src/util/*.c)
 SRCS = $(filter-out src/wowx_main.c,$(SRCS_ALL))
 OBJS = $(patsubst src/%.c,$(BUILDDIR)/%.o,$(SRCS)) \
@@ -52,7 +53,7 @@ RESOLVER_TEST_OBJS = $(patsubst tests/resolver/%.c,$(BUILDDIR)/resolver/test/%.o
 -include $(RESOLVER_TEST_OBJS:.o=.d)
 
 # Create subdirectories for object files
-OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/resolver $(BUILDDIR)/resolver/test $(BUILDDIR)/util $(BUILDDIR)/internal
+OBJDIRS = $(BUILDDIR)/http $(BUILDDIR)/download $(BUILDDIR)/rubies $(BUILDDIR)/gems $(BUILDDIR)/gemfile $(BUILDDIR)/resolver $(BUILDDIR)/resolver/test $(BUILDDIR)/exec $(BUILDDIR)/util $(BUILDDIR)/internal
 
 # --- mbedTLS + HTTPS from cosmo source (compiled with cosmocc) ---
 MBEDTLS_SRCS = $(wildcard $(COSMO_SRC)/third_party/mbedtls/*.c)
@@ -138,6 +139,9 @@ $(BUILDDIR)/resolver/%.o: src/resolver/%.c | $(BUILDDIR)/resolver
 $(BUILDDIR)/resolver/test/%.o: tests/resolver/%.c | $(BUILDDIR)/resolver/test
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -Itests/resolver -c $< -o $@
 
+$(BUILDDIR)/exec/%.o: src/exec/%.c | $(BUILDDIR)/exec
+	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -c $< -o $@
+
 $(BUILDDIR)/util/%.o: src/util/%.c | $(BUILDDIR)/util
 	$(CC) $(CFLAGS) -Iinclude -Ivendor/cjson -c $< -o $@
 
@@ -191,6 +195,9 @@ $(BUILDDIR)/resolver: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/resolver/test: | $(BUILDDIR)/resolver
+	mkdir -p $@
+
+$(BUILDDIR)/exec: | $(BUILDDIR)
 	mkdir -p $@
 
 $(BUILDDIR)/util: | $(BUILDDIR)

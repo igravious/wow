@@ -25,6 +25,7 @@
 
 #include "wow/common.h"
 #include "wow/download.h"
+#include "wow/exec.h"
 #include "wow/gems.h"
 #include "wow/http.h"
 #include "wow/resolver.h"
@@ -132,415 +133,6 @@ static const char **detect_gem_platforms(void)
     return platforms;
 }
 
-/*
- * Build RUBYLIB and exec the binary.
- * Does not return on success (execv replaces the process).
- * Pass env_dir=NULL for direct exec (user gems with binstubs).
- *
- * ruby_api is the API version string (e.g. "4.0.0") used to locate
- * the stdlib under the Ruby prefix.  Pre-built Ruby binaries have
- * hardcoded load paths from their build machine; we fix this by
- * prepending the correct stdlib directories to RUBYLIB.
- */
-static int do_exec(const char *ruby_bin, const char *ruby_api,
-                   const char *env_dir, const char *exe_path,
-                   int user_argc, char **user_argv)
-{
-    /* Derive Ruby prefix: ruby_bin is .../bin/ruby → prefix is ... */
-    char prefix[WOW_DIR_PATH_MAX];
-    snprintf(prefix, sizeof(prefix), "%s", ruby_bin);
-    {
-        char *slash = strrchr(prefix, '/');
-        if (slash) {
-            *slash = '\0';  /* strip /ruby → .../bin */
-            slash = strrchr(prefix, '/');
-            if (slash) *slash = '\0';  /* strip /bin → prefix */
-        }
-    }
-
-    /* Bounded copy: GCC can track api[16] through all downstream snprintfs */
-    char api[16];
-    snprintf(api, sizeof(api), "%s", ruby_api);
-
-    /* Build RUBYLIB: shims first, then gems, then stdlib.
-     *
-     * Order matters: shims shadow stdlib (e.g. bundler/setup.rb),
-     * gems shadow default gems (e.g. prism 1.9 over bundled 0.19),
-     * stdlib provides rubygems/rbconfig/etc. as fallback. */
-    char rubylib[32768];
-    rubylib[0] = '\0';
-    size_t pos = 0;
-
-    /* Helper: append a path to RUBYLIB */
-    #define RUBYLIB_APPEND(path) do {                           \
-        size_t _plen = strlen(path);                            \
-        if (pos + _plen + 2 <= sizeof(rubylib)) {               \
-            if (pos > 0) rubylib[pos++] = ':';                  \
-            memcpy(rubylib + pos, (path), _plen);               \
-            pos += _plen;                                        \
-            rubylib[pos] = '\0';                                 \
-        }                                                        \
-    } while (0)
-
-    /* 1. Shims directory: shadows bundler/setup.rb with a no-op.
-     *
-     * `require 'bundler/setup'` loads the real stdlib file which calls
-     * Bundler.setup → Bundler::Definition.build → Gemfile not found.
-     * Our shim intercepts the require and defines a minimal Bundler
-     * module.  This must come BEFORE stdlib on RUBYLIB. */
-    {
-        char shims_dir[WOW_OS_PATH_MAX];
-        snprintf(shims_dir, sizeof(shims_dir),
-                 "%s/lib/wow_shims", prefix);
-
-        char bundler_shim[WOW_OS_PATH_MAX];
-        snprintf(bundler_shim, sizeof(bundler_shim),
-                 "%s/lib/wow_shims/bundler/setup.rb", prefix);
-
-        struct stat st;
-        if (stat(bundler_shim, &st) != 0) {
-            char bundler_dir[WOW_OS_PATH_MAX];
-            snprintf(bundler_dir, sizeof(bundler_dir),
-                     "%s/lib/wow_shims/bundler", prefix);
-            wow_mkdirs(bundler_dir, 0755);
-
-            FILE *f = fopen(bundler_shim, "w");
-            if (f) {
-                fputs("# wow shim: shadows real bundler/setup.rb\n"
-                      "# RUBYLIB already has all gem paths on the load path,\n"
-                      "# so Bundler's setup is unnecessary.\n"
-                      "unless defined?(::Bundler) && "
-                          "::Bundler.respond_to?(:root)\n"
-                      "  module Bundler\n"
-                      "    def self.setup(*) self end\n"
-                      "    def self.require(*) nil end\n"
-                      "    def self.root() "
-                          "Pathname.new(Dir.pwd) end\n"
-                      "    def self.environment() self end\n"
-                      "    def self.locked_gems() nil end\n"
-                      "  end\n"
-                      "end\n", f);
-                fclose(f);
-            }
-        }
-
-        RUBYLIB_APPEND(shims_dir);
-    }
-
-    /* 2. Gem require_paths from env_dir.
-     *
-     * Gems come BEFORE stdlib so installed gems shadow default gems
-     * (e.g. prism 1.9.0 shadows bundled prism 0.19 on Ruby 3.3).
-     * This matches Bundler's $LOAD_PATH behaviour.
-     *
-     * Each unpacked gem has a .require_paths marker written during
-     * auto_install (from the gemspec's require_paths field).  Most gems
-     * use "lib" but some (e.g. concurrent-ruby) use "lib/concurrent-ruby".
-     * If the marker is missing, fall back to "lib". */
-    if (env_dir) {
-        /* Bounded copy so GCC can track sizes through compositions */
-        char env[WOW_DIR_PATH_MAX];
-        snprintf(env, sizeof(env), "%s", env_dir);
-
-        char gems_dir[WOW_OS_PATH_MAX];
-        snprintf(gems_dir, sizeof(gems_dir), "%s/gems", env);
-
-        DIR *dir = opendir(gems_dir);
-        if (dir) {
-            struct dirent *ent;
-            while ((ent = readdir(dir)) != NULL) {
-                if (ent->d_name[0] == '.') continue;
-
-                /* Bounded copy of d_name for safe path composition */
-                char entry[128];
-                SCOPY(entry, ent->d_name);
-
-                char gem_dir[WOW_OS_PATH_MAX];
-                snprintf(gem_dir, sizeof(gem_dir), "%s/gems/%s",
-                         env, entry);
-
-                /* Read .require_paths marker */
-                char rp_file[WOW_OS_PATH_MAX];
-                snprintf(rp_file, sizeof(rp_file),
-                         "%s/gems/%s/.require_paths", env, entry);
-
-                char rp_buf[1024] = {0};
-                FILE *rpf = fopen(rp_file, "r");
-                if (rpf) {
-                    size_t nr = fread(rp_buf, 1, sizeof(rp_buf) - 1, rpf);
-                    rp_buf[nr] = '\0';
-                    fclose(rpf);
-                }
-
-                /* If no marker, default to "lib" */
-                if (!rp_buf[0])
-                    snprintf(rp_buf, sizeof(rp_buf), "lib\n");
-
-                /* Add each require_path line */
-                char *line = rp_buf;
-                while (*line) {
-                    char *nl = strchr(line, '\n');
-                    if (nl) *nl = '\0';
-                    if (*line) {
-                        char rp_line[64];
-                        snprintf(rp_line, sizeof(rp_line), "%s", line);
-
-                        char full_path[WOW_OS_PATH_MAX];
-                        snprintf(full_path, sizeof(full_path),
-                                 "%s/gems/%s/%s", env, entry, rp_line);
-
-                        struct stat fst;
-                        if (stat(full_path, &fst) == 0 &&
-                            S_ISDIR(fst.st_mode)) {
-                            RUBYLIB_APPEND(full_path);
-                        }
-                    }
-                    line = nl ? nl + 1 : line + strlen(line);
-                }
-            }
-            closedir(dir);
-        }
-    }
-
-    /* 3. Ruby stdlib: <prefix>/lib/ruby/<api_ver>
-     *    Comes AFTER gems so installed gems shadow default gems.
-     *    Provides rubygems, error_highlight, did_you_mean, etc. */
-    {
-        char stdlib_dir[WOW_OS_PATH_MAX];
-        snprintf(stdlib_dir, sizeof(stdlib_dir), "%s/lib/ruby/%s",
-                 prefix, api);
-
-        struct stat st;
-        if (stat(stdlib_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
-            RUBYLIB_APPEND(stdlib_dir);
-
-            /* 3b. Arch-specific: <prefix>/lib/ruby/<api_ver>/<arch>
-             *     Contains rbconfig.rb — scan for the subdir that has it. */
-            DIR *dir = opendir(stdlib_dir);
-            if (dir) {
-                struct dirent *ent;
-                while ((ent = readdir(dir)) != NULL) {
-                    if (ent->d_name[0] == '.') continue;
-
-                    char arch[128];
-                    SCOPY(arch, ent->d_name);
-
-                    char candidate[WOW_OS_PATH_MAX];
-                    snprintf(candidate, sizeof(candidate),
-                             "%s/lib/ruby/%s/%s/rbconfig.rb",
-                             prefix, api, arch);
-
-                    if (access(candidate, R_OK) == 0) {
-                        char arch_dir[WOW_OS_PATH_MAX];
-                        snprintf(arch_dir, sizeof(arch_dir),
-                                 "%s/lib/ruby/%s/%s",
-                                 prefix, api, arch);
-                        RUBYLIB_APPEND(arch_dir);
-                        break;
-                    }
-                }
-                closedir(dir);
-            }
-        }
-    }
-
-    #undef RUBYLIB_APPEND
-
-    if (pos > 0)
-        setenv("RUBYLIB", rubylib, 1);
-
-    /* Stub Kernel#gem so RubyGems activation calls are no-ops.
-     *
-     * Gems are already on RUBYLIB, so `require` finds them.  But some
-     * gems call `gem "name", ">= x.y"` to activate via RubyGems, which
-     * fails because we don't have gemspec files.  We override `gem` with
-     * a no-op via RUBYOPT=-r<preload>.  RUBYOPT is processed AFTER
-     * RubyGems loads, so our stub cleanly replaces the RubyGems version. */
-    {
-        char preload[WOW_OS_PATH_MAX];
-        snprintf(preload, sizeof(preload), "%s/lib/wow_preload.rb", prefix);
-
-        struct stat st;
-        if (stat(preload, &st) != 0) {
-            char preload_dir[WOW_OS_PATH_MAX];
-            snprintf(preload_dir, sizeof(preload_dir), "%s/lib", prefix);
-            wow_mkdirs(preload_dir, 0755);
-
-            FILE *f = fopen(preload, "w");
-            if (f) {
-                fputs("module Kernel\n"
-                      "  def gem(name, *requirements)\n"
-                      "    true\n"
-                      "  end\n"
-                      "  private :gem\n"
-                      "end\n", f);
-                fclose(f);
-            }
-        }
-
-        char rubyopt[WOW_OS_PATH_MAX];
-        snprintf(rubyopt, sizeof(rubyopt),
-                 "-r%s/lib/wow_preload.rb", prefix);
-        setenv("RUBYOPT", rubyopt, 1);
-    }
-
-    /* Set LD_LIBRARY_PATH so Ruby can find libruby.so */
-    {
-        char lib_dir[WOW_OS_PATH_MAX];
-        snprintf(lib_dir, sizeof(lib_dir), "%s/lib", prefix);
-
-        const char *existing = getenv("LD_LIBRARY_PATH");
-        if (existing && existing[0]) {
-            char combined[PATH_MAX * 2];
-            snprintf(combined, sizeof(combined), "%s:%s", lib_dir, existing);
-            setenv("LD_LIBRARY_PATH", combined, 1);
-        } else {
-            setenv("LD_LIBRARY_PATH", lib_dir, 1);
-        }
-    }
-
-    /* Build exec argv: ruby <script> [user_args...] */
-    int nargs = 2 + user_argc;
-    char **exec_argv = calloc((size_t)(nargs + 1), sizeof(char *));
-    if (!exec_argv) {
-        fprintf(stderr, "wowx: out of memory\n");
-        return 1;
-    }
-    exec_argv[0] = (char *)ruby_bin;
-    exec_argv[1] = (char *)exe_path;
-    for (int i = 0; i < user_argc; i++)
-        exec_argv[2 + i] = user_argv[i];
-    exec_argv[nargs] = NULL;
-
-    execv(ruby_bin, exec_argv);
-    fprintf(stderr, "wowx: exec failed: %s\n", strerror(errno));
-    free(exec_argv);
-    return 1;
-}
-
-/*
- * Try to find a binary in a gem's standard bindirs (exe/, bin/).
- * Returns 0 on success (exe_path filled), -1 if not found.
- */
-static int try_binary_in_gem(const char *gems_dir, const char *gem_entry,
-                             const char *binary_name,
-                             char *exe_path, size_t exe_path_sz)
-{
-    /* Bounded copies so GCC can prove path compositions fit */
-    char dir[WOW_DIR_PATH_MAX];
-    snprintf(dir, sizeof(dir), "%s", gems_dir);
-    char entry[128];
-    snprintf(entry, sizeof(entry), "%s", gem_entry);
-    char bin[64];
-    snprintf(bin, sizeof(bin), "%s", binary_name);
-
-    static const char *bindirs[] = { "exe", "bin", NULL };
-    for (const char **bd = bindirs; *bd; bd++) {
-        snprintf(exe_path, exe_path_sz, "%s/%s/%s/%s",
-                 dir, entry, *bd, bin);
-        if (access(exe_path, R_OK) == 0)
-            return 0;
-    }
-    return -1;
-}
-
-/*
- * Search for gem binary in env_dir/gems/.
- *
- * Pass 1: search gem dirs matching gem_name (e.g. rails-8.1.2/).
- *         Also tries .executables markers for name-mismatch gems.
- * Pass 2: search ALL gem dirs (handles meta-gems like rails where
- *         the binary lives in a dependency, e.g. railties-8.1.2/).
- *
- * Returns 0 on success (exe_path filled), -1 if not found.
- */
-static int find_cached_binary(const char *env_dir, const char *gem_name,
-                              const char *binary_name,
-                              char *exe_path, size_t exe_path_sz)
-{
-    /* Bounded copy so GCC can track sizes through compositions */
-    char env[WOW_DIR_PATH_MAX];
-    snprintf(env, sizeof(env), "%s", env_dir);
-
-    /* Require completion marker — a partial env (interrupted install)
-     * may have the primary gem's binary but lack transitive deps. */
-    char marker[WOW_OS_PATH_MAX];
-    snprintf(marker, sizeof(marker), "%s/.installed", env);
-    if (access(marker, F_OK) != 0)
-        return -1;
-
-    char gems_dir[WOW_OS_PATH_MAX];
-    snprintf(gems_dir, sizeof(gems_dir), "%s/gems", env);
-
-    /* Pass 1: directories matching gem_name */
-    DIR *dir = opendir(gems_dir);
-    if (!dir) return -1;
-
-    size_t nlen = strlen(gem_name);
-    struct dirent *ent;
-    while ((ent = readdir(dir)) != NULL) {
-        if (ent->d_name[0] == '.') continue;
-        if (strncmp(ent->d_name, gem_name, nlen) != 0) continue;
-        if (ent->d_name[nlen] != '-') continue;
-
-        /* Try direct lookup with given binary_name */
-        if (try_binary_in_gem(gems_dir, ent->d_name, binary_name,
-                              exe_path, exe_path_sz) == 0) {
-            closedir(dir);
-            return 0;
-        }
-
-        /* Fall back to .executables marker from gemspec */
-        char entry[128];
-        SCOPY(entry, ent->d_name);
-
-        char exe_marker[WOW_OS_PATH_MAX];
-        snprintf(exe_marker, sizeof(exe_marker),
-                 "%s/gems/%s/.executables", env, entry);
-
-        FILE *f = fopen(exe_marker, "r");
-        if (f) {
-            char line[256];
-            while (fgets(line, sizeof(line), f)) {
-                char *nl = strchr(line, '\n');
-                if (nl) *nl = '\0';
-                if (!line[0] || strcmp(line, binary_name) == 0)
-                    continue;
-
-                if (try_binary_in_gem(gems_dir, ent->d_name, line,
-                                      exe_path, exe_path_sz) == 0) {
-                    fclose(f);
-                    closedir(dir);
-                    return 0;
-                }
-            }
-            fclose(f);
-        }
-    }
-    closedir(dir);
-
-    /* Pass 2: search ALL gem directories (meta-gem support).
-     * e.g. `rails` gem has no binary — it's in `railties`. */
-    dir = opendir(gems_dir);
-    if (!dir) return -1;
-
-    while ((ent = readdir(dir)) != NULL) {
-        if (ent->d_name[0] == '.') continue;
-        /* Skip dirs already checked in pass 1 */
-        if (strncmp(ent->d_name, gem_name, nlen) == 0 &&
-            ent->d_name[nlen] == '-')
-            continue;
-
-        if (try_binary_in_gem(gems_dir, ent->d_name, binary_name,
-                              exe_path, exe_path_sz) == 0) {
-            closedir(dir);
-            return 0;
-        }
-    }
-
-    closedir(dir);
-    return -1;
-}
 
 /*
  * Check wowx cache for a specific version.
@@ -560,7 +152,7 @@ static int check_cache_pinned(const char *wowx_cache, const char *gem_name,
     SCOPY(ver, version);
 
     snprintf(env_dir, env_dir_sz, "%s/%s-%s", cache, name, ver);
-    return find_cached_binary(env_dir, gem_name, binary_name,
+    return wow_find_gem_binary(env_dir, gem_name, binary_name,
                               exe_path, exe_path_sz);
 }
 
@@ -610,7 +202,7 @@ static int check_cache_latest(const char *wowx_cache, const char *gem_name,
     if (!found) return -1;
 
     snprintf(env_dir, env_dir_sz, "%s", best_env);
-    return find_cached_binary(env_dir, gem_name, binary_name,
+    return wow_find_gem_binary(env_dir, gem_name, binary_name,
                               exe_path, exe_path_sz);
 }
 
@@ -778,7 +370,7 @@ static int build_native_extension(const char *gem_dir, const char *ext_path,
     /* Set up environment for the forked Ruby process.
      * Pre-built rubies have hardcoded load paths from the build machine,
      * so we need LD_LIBRARY_PATH (for libruby.so) and RUBYLIB (for
-     * stdlib: mkmf, rubygems, etc.) — same fix as do_exec(). */
+     * stdlib: mkmf, rubygems, etc.) — same fix as wow_exec_gem_binary(). */
     {
         char prefix[WOW_DIR_PATH_MAX];
         snprintf(prefix, sizeof(prefix), "%s", ruby_bin);
@@ -1191,8 +783,8 @@ static int auto_install(const char *gem_name, const char *constraint_str,
         }
 
         /* Parse gemspec and write marker files.
-         * .require_paths — load paths (do_exec uses these for RUBYLIB)
-         * .executables   — binary names (find_cached_binary uses these) */
+         * .require_paths — load paths (wow_exec_gem_binary uses these for RUBYLIB)
+         * .executables   — binary names (wow_find_gem_binary uses these) */
         struct wow_gemspec gspec;
         if (wow_gemspec_parse(gem_path, &gspec) == 0) {
             if (gspec.n_require_paths > 0) {
@@ -1419,7 +1011,7 @@ int main(int argc, char *argv[])
             snprintf(user_bin, sizeof(user_bin),
                      "%s/.gem/ruby/%s/bin/%s", home_dir, ruby_api, bin);
             if (access(user_bin, R_OK) == 0)
-                return do_exec(ruby_bin, ruby_api, NULL, user_bin,
+                return wow_exec_gem_binary(ruby_bin, ruby_api, NULL, user_bin,
                                user_argc, user_argv);
         }
     }
@@ -1443,7 +1035,7 @@ int main(int argc, char *argv[])
                                            exe_path, sizeof(exe_path));
 
             if (found == 0)
-                return do_exec(ruby_bin, ruby_api, env_dir, exe_path,
+                return wow_exec_gem_binary(ruby_bin, ruby_api, env_dir, exe_path,
                                user_argc, user_argv);
         }
     }
@@ -1519,14 +1111,14 @@ int main(int argc, char *argv[])
         }
 
         char exe_path[WOW_OS_PATH_MAX];
-        if (find_cached_binary(env_dir, gem_name, binary_name,
+        if (wow_find_gem_binary(env_dir, gem_name, binary_name,
                                exe_path, sizeof(exe_path)) != 0) {
             fprintf(stderr, "wowx: binary '%s' not found in gem '%s'\n",
                     binary_name, gem_name);
             return 1;
         }
 
-        return do_exec(ruby_bin, ruby_api, env_dir, exe_path,
+        return wow_exec_gem_binary(ruby_bin, ruby_api, env_dir, exe_path,
                        user_argc, user_argv);
     }
 }
